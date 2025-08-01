@@ -7,4 +7,5 @@ export interface PayArgs {
   v?: number;
   r?: string;
   s?: string;
+  chainId?: number;
 }

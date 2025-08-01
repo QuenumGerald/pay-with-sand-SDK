@@ -1,4 +1,4 @@
-import { payWithSand } from './sandmodal-demo/src/payWithSand.ts';
+import { payWithSand } from './sandmodal-demo/src/payWithSand';
 
 const args = {
   amount: '1000000000000000000', // 1 SAND en wei

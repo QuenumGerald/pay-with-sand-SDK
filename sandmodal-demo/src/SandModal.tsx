@@ -1,8 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog } from '@headlessui/react';
-import type { PayArgs } from './types';
+import type { PayArgs as OrigPayArgs } from './types';
 import { payWithSand } from './payWithSand';
-import { formatUnits } from './ethers-helpers';
+// Removed wagmi hooks that cause errors
+// import { useAccount, useDisconnect } from 'wagmi';
+// import { Web3Button } from '@web3modal/react';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+// Chain configurations
+const CHAINS = {
+  ethereum: { id: 1, name: 'Ethereum', explorer: 'etherscan.io', gas: '0.05 ETH' },
+  polygon: { id: 137, name: 'Polygon', explorer: 'polygonscan.com', gas: '0.03 USD' },
+  bsc: { id: 56, name: 'BSC', explorer: 'bscscan.com', gas: '0.02 USD' }
+} as const;
+
+type ChainKey = keyof typeof CHAINS;
+
+// Extend for demo: allow chainId
+interface PayArgs extends OrigPayArgs {
+  chainId?: number;
+}
 
 interface SandModalProps {
   isOpen: boolean;
@@ -11,107 +29,364 @@ interface SandModalProps {
   onSuccess?: (txHash: string) => void;
 }
 
-export function SandModal({ isOpen, onClose, args, onSuccess }: SandModalProps) {
-  const [loading, setLoading] = React.useState(false);
+const TransactionLoader = ({ txHash, chainId }: { txHash: string, chainId: number }) => {
+  const chain = Object.values(CHAINS).find(c => c.id === chainId) || CHAINS.ethereum;
+  return (
+    <div style={{ textAlign: 'center', margin: '20px 0' }}>
+      <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+      <p>Processing on-chain</p>
+      <a
+        href={`https://${chain.explorer}/tx/${txHash}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: '#00B3B0', textDecoration: 'none' }}
+      >
+        View on {chain.name}
+      </a>
+    </div>
+  );
+};
 
-  const handleConfirm = async () => {
-    setLoading(true);
-    try {
-      const hash = await payWithSand(args);
-      onSuccess?.(hash);
-      onClose();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+const SuccessState = ({ txHash, chainId }: { txHash: string, chainId: number }) => {
+  const chain = Object.values(CHAINS).find(c => c.id === chainId) || CHAINS.ethereum;
+  return (
+    <div style={{ textAlign: 'center', margin: '20px 0' }}>
+      <div style={{ fontSize: '48px', marginBottom: '16px', color: '#10B981' }}>✓</div>
+      <p>Payment Confirmed!</p>
+      <a
+        href={`https://${chain.explorer}/tx/${txHash}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: '#00B3B0', textDecoration: 'none' }}
+      >
+        View on {chain.name}
+      </a>
+    </div>
+  );
+};
+
+export function SandModal({ isOpen, onClose, args, onSuccess }: SandModalProps) {
+  // Simulate wallet connection state
+  const [isConnected, setIsConnected] = useState(false);
+  const [address, setAddress] = useState<string | null>(null);
+  const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
+
+  // Simulate wallet connection/disconnection
+  const connect = (walletName: string) => {
+    setAddress('0x1234567890abcdef1234567890abcdef12345678');
+    setIsConnected(true);
+    setSelectedWallet(walletName);
+  };
+
+  const disconnect = () => {
+    setAddress(null);
+    setIsConnected(false);
+    setSelectedWallet(null);
   };
 
   const orderId = args.orderId || 'ABC-1234';
-  const destination = args.recipient || '0xAbc...7890';
-  const amount = formatUnits(args.amount, 18);
-  const usdValue = '~ 6.80 USD';
+  const destination = args.recipient || '0xAbcd...7890';
+  const amount = (typeof args.amount === 'string' ? (Number(args.amount) / 1e18).toFixed(2) : '25.00');
+
+  // Définir un type explicite pour éviter les erreurs TypeScript
+  type TxState = 'idle' | 'sending' | 'success' | 'error';
+  const [txState, setTxState] = useState<TxState>('idle');
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [selectedChain, setSelectedChain] = useState<keyof typeof CHAINS>('ethereum');
+
+  const chainOptions = [
+    { label: 'Ethereum', value: 'ethereum', chainId: CHAINS.ethereum.id },
+    { label: 'Polygon', value: 'polygon', chainId: CHAINS.polygon.id },
+    { label: 'BSC', value: 'bsc', chainId: CHAINS.bsc.id },
+  ];
+
+  // Format address to 0xAbcd...1234 format
+  const formatAddress = (address: string) => {
+    if (!address || address === 'N/A') return address;
+    if (address.length < 10) return address;
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
+
+  const formattedDestination = formatAddress(destination);
+  const formattedAddress = address ? formatAddress(address) : '';
+
+  const handleConfirm = async () => {
+    if (!isConnected) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    setTxState('sending');
+    setTxHash(null);
+
+    try {
+      const selectedChainId = CHAINS[selectedChain].id;
+      const hash = await payWithSand({
+        ...args,
+        chainId: selectedChainId,
+      });
+      setTxHash(hash);
+      setTxState('success');
+      onSuccess?.(hash);
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      setTxState('error');
+      toast.error(error?.message || 'Payment failed. Please try again.');
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black bg-opacity-70" aria-hidden="true" />
-      <div className="relative bg-[#14213d] rounded-2xl p-6 w-full max-w-md shadow-2xl border border-[#22335b]">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <span className="inline-flex items-center justify-center w-8 h-8 bg-[#22335b] rounded-full">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff" /></svg>
-            </span>
-            <span className="text-white text-lg font-bold">Pay with $SAND</span>
-          </div>
-          <button onClick={onClose} className="text-[#8fa2c7] hover:text-white text-xl font-bold">×</button>
-        </div>
-        <div className="bg-[#1a2540] rounded-lg p-4 mb-2">
-          <div className="text-white text-2xl font-semibold">{amount} $SAND</div>
-          <div className="text-[#8fa2c7] text-sm mt-1">{usdValue}</div>
-        </div>
-        <div className="flex items-center bg-[#1a2540] rounded-lg p-3 mb-4">
-          <span className="inline-flex items-center justify-center w-8 h-8 bg-[#22335b] rounded-full mr-3">
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#7b3fe4" /></svg>
-          </span>
-          <div>
-            <div className="text-white font-medium">Polygon</div>
-            <div className="text-[#8fa2c7] text-xs">gas ≈ 0.03 USD</div>
-          </div>
-        </div>
-        <div className="mb-4">
-          <div className="text-[#8fa2c7] text-sm mb-2">Select Wallet</div>
-          <div className="flex space-x-3">
-            <button className="flex flex-col items-center px-3 py-2 rounded-lg border-2 border-[#f8d34c] bg-[#22335b] text-white font-medium focus:outline-none">
-              <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#f8d34c" /></svg>
-              <span className="mt-1 text-xs">MetaMask</span>
-            </button>
-            <button className="flex flex-col items-center px-3 py-2 rounded-lg bg-[#22335b] text-white font-medium">
-              <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#2d2d2d" /></svg>
-              <span className="mt-1 text-xs">Rainbow</span>
-            </button>
-            <button className="flex flex-col items-center px-3 py-2 rounded-lg bg-[#22335b] text-white font-medium">
-              <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#e0e0e0" /></svg>
-              <span className="mt-1 text-xs">Ledger</span>
-            </button>
-            <button className="flex flex-col items-center px-3 py-2 rounded-lg bg-[#22335b] text-white font-medium">
-              <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#1abc9c" /></svg>
-              <span className="mt-1 text-xs">Wallet...</span>
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel style={{
+          background: '#1E293B',
+          padding: '1.5rem',
+          borderRadius: '0.5rem',
+          width: '100%',
+          maxWidth: '28rem',
+          color: 'white'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <Dialog.Title style={{ fontSize: '1.25rem', fontWeight: '600' }}>
+              {txState === 'success' ? 'Payment Successful' : 'Pay with SAND'}
+            </Dialog.Title>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#8fa2c7',
+                fontSize: '1.25rem',
+                opacity: txState === 'sending' ? 0.5 : 1,
+                cursor: txState === 'sending' ? 'not-allowed' : 'pointer'
+              }}
+              disabled={txState === 'sending'}
+            >
+              {txState === 'sending' ? '' : '✕'}
             </button>
           </div>
-        </div>
-        <div className="mb-4">
-          <div className="text-[#8fa2c7] text-sm mb-1">Order Recap</div>
-          <div className="bg-[#1a2540] rounded-lg p-3">
-            <div className="flex justify-between text-[#8fa2c7] text-xs mb-1">
-              <span>Order ID</span>
-              <span>{orderId}</span>
-            </div>
-            <div className="flex justify-between text-[#8fa2c7] text-xs">
-              <span>Destination</span>
-              <span className="text-[#4db6ff]">{destination}</span>
-            </div>
-          </div>
-        </div>
-        <div className="bg-[#f8d34c]/10 border border-[#f8d34c] rounded-lg px-3 py-2 text-[#f8d34c] text-xs mb-5">
-          You will sign ONE transaction using EIP-2612 permit. No separate 'approve' fee. <a href="#" className="underline">Learn more</a>
-        </div>
-        <div className="flex justify-between">
-          <button
-            className="w-1/2 mr-2 py-2 rounded-lg border border-[#8fa2c7] text-[#8fa2c7] font-semibold hover:bg-[#22335b] transition"
-            onClick={onClose}
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button
-            className="w-1/2 py-2 rounded-lg bg-[#2563eb] text-white font-semibold hover:bg-[#1d4ed8] transition disabled:opacity-60"
-            onClick={handleConfirm}
-            disabled={loading}
-          >
-            {loading ? 'Processing…' : 'Confirm & Pay'}
-          </button>
-        </div>
+
+          {txState === 'success' && txHash ? (
+            <SuccessState txHash={txHash} chainId={CHAINS[selectedChain].id} />
+          ) : txState === 'sending' ? (
+            txHash ? (
+              <TransactionLoader txHash={txHash} chainId={CHAINS[selectedChain].id} />
+            ) : (
+              <div style={{ textAlign: 'center', margin: '1.25rem 0' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>↻</div>
+                <p>Waiting for confirmation...</p>
+              </div>
+            )
+          ) : (
+            <>
+              <div style={{ background: '#0F172A', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
+                <div style={{ fontSize: '1.75rem', color: 'white', textAlign: 'center', marginBottom: '0.5rem' }}>
+                  {amount} SAND
+                </div>
+                <div style={{ height: '1px', background: '#1E293B', margin: '1rem 0' }} />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                  <span style={{ color: '#8fa2c7', fontSize: '0.875rem' }}>Order ID</span>
+                  <span style={{ color: '#8fa2c7', fontSize: '0.9375rem' }}>{orderId}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: isConnected ? '0.75rem' : 0 }}>
+                  <span style={{ color: '#8fa2c7', fontSize: '0.875rem' }}>Destination</span>
+                  <span style={{ color: '#8fa2c7', fontSize: '0.9375rem' }}>{formattedDestination}</span>
+                </div>
+
+                {isConnected && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '0.75rem',
+                    paddingTop: '0.75rem',
+                    borderTop: '1px solid #1E293B'
+                  }}>
+                    <span style={{ color: '#8fa2c7', fontSize: '0.875rem' }}>Connected Wallet</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ color: 'white', fontSize: '0.875rem' }}>{formattedAddress}</span>
+                      <button
+                        onClick={() => disconnect()}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid #8fa2c7',
+                          borderRadius: '0.25rem',
+                          color: '#8fa2c7',
+                          padding: '0.125rem 0.375rem',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {!isConnected ? (
+                <div style={{ textAlign: 'center', margin: '1.25rem 0' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center', marginBottom: '1rem' }}>
+                    <div
+                      onClick={() => connect('MetaMask')}
+                      style={{
+                        width: '80px',
+                        height: '80px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        background: '#0F172A'
+                      }}
+                    >
+                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>🦊</div>
+                      <div style={{ fontSize: '12px', color: 'white' }}>MetaMask</div>
+                    </div>
+
+                    <div
+                      onClick={() => connect('Rainbow')}
+                      style={{
+                        width: '80px',
+                        height: '80px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        background: '#0F172A'
+                      }}
+                    >
+                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>🌈</div>
+                      <div style={{ fontSize: '12px', color: 'white' }}>Rainbow</div>
+                    </div>
+
+                    <div
+                      onClick={() => connect('Ledger')}
+                      style={{
+                        width: '80px',
+                        height: '80px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        background: '#0F172A'
+                      }}
+                    >
+                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>💼</div>
+                      <div style={{ fontSize: '12px', color: 'white' }}>Ledger</div>
+                    </div>
+
+                    <div
+                      onClick={() => connect('WalletConnect')}
+                      style={{
+                        width: '80px',
+                        height: '80px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        background: '#0F172A'
+                      }}
+                    >
+                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>📱</div>
+                      <div style={{ fontSize: '12px', color: 'white' }}>WalletConnect</div>
+                    </div>
+                  </div>
+                  <p style={{ color: '#8fa2c7', fontSize: '0.875rem' }}>Select a wallet to continue</p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: 'white' }}>Network</div>
+                    <select
+                      value={selectedChain}
+                      onChange={(e) => setSelectedChain(e.target.value as ChainKey)}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        background: '#0F172A',
+                        border: '1px solid #334155',
+                        borderRadius: '0.5rem',
+                        color: 'white',
+                        fontSize: '0.875rem'
+                      }}
+                      disabled={false}
+                    >
+                      {chainOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={onClose}
+                      style={{
+                        width: '50%',
+                        padding: '0.75rem',
+                        background: 'transparent',
+                        color: 'white',
+                        border: '1px solid #334155',
+                        borderRadius: '0.5rem',
+                        fontSize: '1rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        opacity: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirm}
+                      disabled={false}
+                      style={{
+                        width: '50%',
+                        padding: '0.75rem',
+                        background: '#8B5CF6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontSize: '1rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        opacity: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      Confirm & Pay
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </Dialog.Panel>
       </div>
     </Dialog>
   );
