@@ -1,17 +1,20 @@
-import { payWithSand } from './sandmodal-demo/src/payWithSand';
+import { payWithSand } from './src/payWithSand';
+import type { PayArgs } from './src/types';
 
-const args = {
-  amount: '1000000000000000000', // 1 SAND en wei
-  orderId: 'TEST-ORDER-001',
-  recipient: '0x1234567890abcdef1234567890abcdef12345678',
-  // deadline, v, r, s peuvent être ajoutés ici si besoin
-};
+async function testPayWithSand() {
+  const args: PayArgs = {
+    amount: '1000000000000000000', // 1 SAND en wei (18 décimales)
+    orderId: 'TEST-ORDER-001',
+    recipient: '0xVotreAdresseEthereumIci'
+    // Ajoutez ici les champs permit si vous voulez tester le flow EIP-2612
+  };
 
-(async () => {
   try {
     const txHash = await payWithSand(args);
     console.log('Transaction envoyée ! Hash:', txHash);
   } catch (err) {
-    console.error('Erreur SDK:', err);
+    console.error('Erreur lors du paiement :', err);
   }
-})();
+}
+
+testPayWithSand();
