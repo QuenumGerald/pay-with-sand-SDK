@@ -1,11 +1,14 @@
 {
-  "name": "@sandbox/pay-with-sand",
+  "name": "@pay-with-sand/sdk",
   "version": "0.1.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",
