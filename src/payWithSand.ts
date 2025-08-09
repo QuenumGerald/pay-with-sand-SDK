@@ -11,23 +11,28 @@ const ABI = [
  * payWithSand handles both permit and approval flows.
  */
 export async function payWithSand(args: PayArgs): Promise<string> {
-  const { amount, orderId, recipient, deadline, v, r, s } = args;
+  const { amount, orderId, recipient, deadline, v, r, s, wallet } = args;
   if (!ethers.utils.isAddress(recipient)) {
     throw new Error('Invalid recipient address');
   }
-  // Initialize provider with WalletConnect or MetaMask
+  // Initialize provider according to selected wallet (default: auto)
   let provider;
-  if ((window as any).ethereum) {
+  const hasMM = Boolean((window as any).ethereum);
+  const selected = wallet ?? (hasMM ? 'metamask' : 'walletconnect');
+  if (selected === 'metamask') {
+    if (!hasMM) throw new Error('MetaMask not detected in browser');
     provider = new ethers.providers.Web3Provider((window as any).ethereum);
     await provider.send('eth_requestAccounts', []);
-  } else {
+  } else if (selected === 'walletconnect') {
     const infuraId = process.env.INFURA_ID;
     if (!infuraId) {
-      throw new Error('INFURA_ID environment variable is required');
+      throw new Error('INFURA_ID environment variable is required for WalletConnect');
     }
     const wc = new WalletConnectProvider({ infuraId });
     await wc.enable();
     provider = new ethers.providers.Web3Provider(wc as any);
+  } else {
+    throw new Error(`Unsupported wallet: ${selected}`);
   }
 
   const contractAddress = process.env.REACT_APP_PAYMENT_CONTRACT_ADDRESS;
