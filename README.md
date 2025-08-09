@@ -35,6 +35,7 @@ export function Checkout() {
         isOpen={isOpen}
         onClose={() => setOpen(false)}
         args={args}
+        usdValue="~ 6.80 USD"
         onSuccess={(hash) => setTxHash(hash)}
       />
       {txHash && <p>Tx hash: {txHash}</p>}
@@ -43,5 +44,20 @@ export function Checkout() {
   );
 }
 ```
+
+## Configuration
+
+The SDK expects the following environment variables to be defined:
+
+| Variable | Description |
+|----------|-------------|
+| `INFURA_ID` | Infura project ID used for WalletConnect fallback |
+| `REACT_APP_PAYMENT_CONTRACT_ADDRESS` | Address of the payment contract |
+
+Add them to a `.env` file or set them in your environment before running your application.
+
+### Permit vs Approve flow
+
+If the permit signature parameters (`deadline`, `v`, `r`, `s`) are provided in `PayArgs`, the SDK uses the gasless permit flow (EIP-2612). Otherwise, it falls back to the traditional `pay` function which requires prior token approval.
 
 ---

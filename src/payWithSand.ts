@@ -21,13 +21,20 @@ export async function payWithSand(args: PayArgs): Promise<string> {
     provider = new ethers.providers.Web3Provider((window as any).ethereum);
     await provider.send('eth_requestAccounts', []);
   } else {
-    const wc = new WalletConnectProvider({ infuraId: process.env.INFURA_ID });
+    const infuraId = process.env.INFURA_ID;
+    if (!infuraId) {
+      throw new Error('INFURA_ID environment variable is required');
+    }
+    const wc = new WalletConnectProvider({ infuraId });
     await wc.enable();
     provider = new ethers.providers.Web3Provider(wc as any);
   }
 
+  const contractAddress = process.env.REACT_APP_PAYMENT_CONTRACT_ADDRESS;
+  if (!contractAddress) {
+    throw new Error('REACT_APP_PAYMENT_CONTRACT_ADDRESS environment variable is required');
+  }
   const signer = provider.getSigner();
-  const contractAddress = process.env.REACT_APP_PAYMENT_CONTRACT_ADDRESS!;
   const contract = new Contract(contractAddress, ABI, signer);
 
   // Use permit flow if signature params are present

@@ -8,11 +8,16 @@ interface SandModalProps {
   isOpen: boolean;
   onClose: () => void;
   args: PayArgs;
+  usdValue: string;
   onSuccess?: (txHash: string) => void;
 }
 
-export function SandModal({ isOpen, onClose, args, onSuccess }: SandModalProps) {
+export function SandModal({ isOpen, onClose, args, usdValue, onSuccess }: SandModalProps) {
   const [loading, setLoading] = React.useState(false);
+
+  if (!args.orderId || !args.recipient || !args.amount || !usdValue) {
+    return <div className="p-4 text-red-500">Missing required payment information</div>;
+  }
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -27,11 +32,9 @@ export function SandModal({ isOpen, onClose, args, onSuccess }: SandModalProps) 
     }
   };
 
-  // Dummy data for illustration, replace with props if needed
-  const orderId = args.orderId || 'ABC-1234';
-  const destination = args.recipient || '0xAbc...7890';
+  const orderId = args.orderId;
+  const destination = args.recipient;
   const amount = ethers.utils.formatUnits(args.amount, 18);
-  const usdValue = '~ 6.80 USD'; // Replace with prop/calculation if needed
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center">
