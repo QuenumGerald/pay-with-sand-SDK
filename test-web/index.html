@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test pay-with-sand SDK</title>
+    <style>
+      body { font-family: sans-serif; margin: 24px; }
+      label { display: block; margin-top: 12px; }
+      input { width: 420px; max-width: 100%; padding: 8px; }
+      button { margin-top: 16px; padding: 10px 16px; }
+      #log { margin-top: 20px; white-space: pre-wrap; }
+    </style>
+    <script>
+      // Injecter des variables d'environnement attendues par le SDK.
+      // Remplacez ces valeurs par vos vraies config avant de tester.
+      window.process = {
+        env: {
+          REACT_APP_PAYMENT_CONTRACT_ADDRESS: '0xYourPaymentContractAddress',
+          INFURA_ID: 'your-infura-project-id'
+        }
+      };
+      // Polyfill pour certains libs (ex: WalletConnect v1) qui attendent 'global'
+      // dans un contexte navigateur.
+      if (typeof window.global === 'undefined') {
+        window.global = window;
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>
