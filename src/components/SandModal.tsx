@@ -13,6 +13,7 @@ interface SandModalProps {
 
 export function SandModal({ isOpen, onClose, args, onSuccess }: SandModalProps) {
   const [loading, setLoading] = React.useState(false);
+  const [usdValue, setUsdValue] = React.useState<string>('~');
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -28,10 +29,40 @@ export function SandModal({ isOpen, onClose, args, onSuccess }: SandModalProps) 
   };
 
   // Dummy data for illustration, replace with props if needed
-  const orderId = args.orderId || 'ABC-1234';
-  const destination = args.recipient || '0xAbc...7890';
+  const orderId = args.orderId;
+  const destination = args.recipient;
   const amount = ethers.utils.formatUnits(args.amount, 18);
-  const usdValue = '~ 6.80 USD'; // Replace with prop/calculation if needed
+
+  // Compute USD value from live SAND price (CoinGecko) with basic fallback
+  React.useEffect(() => {
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        const amt = parseFloat(amount);
+        if (!isFinite(amt) || amt <= 0) {
+          setUsdValue('~');
+          return;
+        }
+        const apiUrl = process.env.PRICE_API_URL || 'https://api.coingecko.com/api/v3/simple/price?ids=the-sandbox&vs_currencies=usd';
+        const res = await fetch(apiUrl, { signal: controller.signal });
+        if (!res.ok) throw new Error(`price http ${res.status}`);
+        const data = await res.json();
+        const usd = data?.['the-sandbox']?.usd;
+        if (typeof usd !== 'number') throw new Error('bad price payload');
+        const value = amt * usd;
+        setUsdValue(
+          value.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
+        );
+      } catch (e) {
+        if ((e as any)?.name === 'AbortError') return;
+        // Fallback silently
+        setUsdValue('~');
+        console.error('[SAND][usdValue]', e);
+      }
+    };
+    run();
+    return () => controller.abort();
+  }, [amount]);
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center">

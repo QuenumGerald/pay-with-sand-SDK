@@ -1,17 +1,18 @@
-# @sandbox/pay-with-sand
+# @pay-with-sand/sdk
 
 ## Installation
 
 ```bash
-npm install @sandbox/pay-with-sand wagmi viem ethers @walletconnect/web3-provider @metamask/providers
+npm install @pay-with-sand/sdk wagmi viem ethers @walletconnect/web3-provider @metamask/providers
 ```
 
 ## Usage
 
 ```tsx
 import React, { useState } from 'react';
-import { SandModal, useSandPaymentStatus } from '@sandbox/pay-with-sand';
-import type { PayArgs } from '@sandbox/pay-with-sand';
+import { ethers } from 'ethers';
+import { SandModal, useSandPaymentStatus } from '@pay-with-sand/sdk';
+import type { PayArgs } from '@pay-with-sand/sdk';
 
 export function Checkout() {
   const [orderId] = useState(() => ethers.utils.id('order-123'));
@@ -45,3 +46,22 @@ export function Checkout() {
 ```
 
 ---
+
+## Environment Variables
+
+Configure the following environment variables depending on your app environment:
+
+- `REACT_APP_PAYMENT_CONTRACT_ADDRESS` (required): address of the on-chain payment contract used by `useSandPaymentStatus()`.
+- `INFURA_ID` (optional but recommended): Infura project ID used to initialize WalletConnect fallback in `useSandPaymentStatus()` when `window.ethereum` is not available.
+- `PRICE_API_URL` (optional): override for the price endpoint used by `SandModal` to compute the USD equivalent. Defaults to CoinGecko simple price API for The Sandbox: `https://api.coingecko.com/api/v3/simple/price?ids=the-sandbox&vs_currencies=usd`.
+
+Example `.env` (do not commit real secrets):
+
+```env
+# Payment status hook
+REACT_APP_PAYMENT_CONTRACT_ADDRESS=0xYourPaymentContract
+INFURA_ID=your_infura_project_id
+
+# Optional: override price API (must return { "the-sandbox": { "usd": number } })
+# PRICE_API_URL=https://your-proxy.example.com/the-sandbox-price
+```
