@@ -28,8 +28,8 @@ export function SandModal({ isOpen, onClose, args, onSuccess }: SandModalProps) 
   };
 
   // Dummy data for illustration, replace with props if needed
-  const orderId = args.orderId || 'ABC-1234';
-  const destination = args.recipient || '0xAbc...7890';
+  const orderId = args.orderId;
+  const destination = args.recipient;
   const amount = ethers.utils.formatUnits(args.amount, 18);
   const usdValue = '~ 6.80 USD'; // Replace with prop/calculation if needed
 
