@@ -8,30 +8,38 @@ interface SandModalProps {
   isOpen: boolean;
   onClose: () => void;
   args: PayArgs;
+  usdValue: string;
   onSuccess?: (txHash: string) => void;
 }
 
-export function SandModal({ isOpen, onClose, args, onSuccess }: SandModalProps) {
+export function SandModal({ isOpen, onClose, args, usdValue, onSuccess }: SandModalProps) {
   const [loading, setLoading] = React.useState(false);
+  const [wallet, setWallet] = React.useState<'metamask' | 'walletconnect'>('metamask');
+  const [errMsg, setErrMsg] = React.useState<string | null>(null);
+
+  if (!args.orderId || !args.recipient || !args.amount || !usdValue) {
+    return <div className="p-4 text-red-500">Missing required payment information</div>;
+  }
 
   const handleConfirm = async () => {
     setLoading(true);
+    setErrMsg(null);
     try {
-      const hash = await payWithSand(args);
+      const hash = await payWithSand({ ...args, wallet });
       onSuccess?.(hash);
       onClose();
     } catch (e) {
       console.error(e);
+      const msg = e instanceof Error ? e.message : String(e);
+      setErrMsg(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  // Dummy data for illustration, replace with props if needed
   const orderId = args.orderId;
   const destination = args.recipient;
   const amount = ethers.utils.formatUnits(args.amount, 18);
-  const usdValue = '~ 6.80 USD'; // Replace with prop/calculation if needed
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center">
@@ -41,7 +49,6 @@ export function SandModal({ isOpen, onClose, args, onSuccess }: SandModalProps) 
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
             <span className="inline-flex items-center justify-center w-8 h-8 bg-[#22335b] rounded-full">
-              {/* Icon placeholder */}
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff" /></svg>
             </span>
             <span className="text-white text-lg font-bold">Pay with $SAND</span>
@@ -58,7 +65,6 @@ export function SandModal({ isOpen, onClose, args, onSuccess }: SandModalProps) 
         {/* Network */}
         <div className="flex items-center bg-[#1a2540] rounded-lg p-3 mb-4">
           <span className="inline-flex items-center justify-center w-8 h-8 bg-[#22335b] rounded-full mr-3">
-            {/* Polygon icon placeholder */}
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#7b3fe4" /></svg>
           </span>
           <div>
@@ -67,28 +73,32 @@ export function SandModal({ isOpen, onClose, args, onSuccess }: SandModalProps) 
           </div>
         </div>
 
-        {/* Wallet selection (static for now) */}
+        {/* Wallet selection */}
         <div className="mb-4">
           <div className="text-[#8fa2c7] text-sm mb-2">Select Wallet</div>
           <div className="flex space-x-3">
-            <button className="flex flex-col items-center px-3 py-2 rounded-lg border-2 border-[#f8d34c] bg-[#22335b] text-white font-medium focus:outline-none">
-              {/* MetaMask icon */}
+            <button
+              type="button"
+              onClick={() => setWallet('metamask')}
+              className={`flex flex-col items-center px-3 py-2 rounded-lg border-2 ${wallet === 'metamask' ? 'border-[#f8d34c]' : 'border-transparent'} bg-[#22335b] text-white font-medium focus:outline-none`}
+            >
               <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#f8d34c" /></svg>
               <span className="mt-1 text-xs">MetaMask</span>
             </button>
-            <button className="flex flex-col items-center px-3 py-2 rounded-lg bg-[#22335b] text-white font-medium">
+            <button
+              type="button"
+              onClick={() => setWallet('walletconnect')}
+              className={`flex flex-col items-center px-3 py-2 rounded-lg border-2 ${wallet === 'walletconnect' ? 'border-[#f8d34c]' : 'border-transparent'} bg-[#22335b] text-white font-medium`}
+            >
               <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#2d2d2d" /></svg>
-              <span className="mt-1 text-xs">Rainbow</span>
-            </button>
-            <button className="flex flex-col items-center px-3 py-2 rounded-lg bg-[#22335b] text-white font-medium">
-              <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#e0e0e0" /></svg>
-              <span className="mt-1 text-xs">Ledger</span>
-            </button>
-            <button className="flex flex-col items-center px-3 py-2 rounded-lg bg-[#22335b] text-white font-medium">
-              <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#1abc9c" /></svg>
-              <span className="mt-1 text-xs">Wallet...</span>
+              <span className="mt-1 text-xs">WalletConnect</span>
             </button>
           </div>
+          {errMsg && (
+            <div className="mt-2 text-xs text-red-400">
+              {errMsg}
+            </div>
+          )}
         </div>
 
         {/* Order Recap */}

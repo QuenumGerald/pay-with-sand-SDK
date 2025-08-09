@@ -8,4 +8,6 @@ export interface PayArgs {
   r?: string;
   s?: string;
   chainId?: number;
+  // optional wallet selector: defaults to auto (MetaMask if available else WalletConnect)
+  wallet?: 'metamask' | 'walletconnect';
 }

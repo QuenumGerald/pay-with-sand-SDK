@@ -11,5 +11,5 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true
   },
-  "include": ["src", "sandmodal-demo", "test-sdk.ts"]
+  "include": ["src"]
 }
