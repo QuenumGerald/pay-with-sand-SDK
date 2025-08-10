@@ -1,5 +1,5 @@
 import React from 'react';
-import { SandModal, useSandUsdValue } from '@pay-with-sand/sdk';
+import { SandModal, useSandUsdValue, payWithSand } from '@pay-with-sand/sdk';
 import { ethers, utils as ethersUtils } from 'ethers';
 
 export function App() {
@@ -144,6 +144,20 @@ export function App() {
     }
   }
 
+  async function handlePayDirect() {
+    try {
+      const txHash = await payWithSand({
+        orderId: ORDER_BYTES32,
+        amount: AMOUNT_WEI,
+        recipient: MERCHANT,
+      } as any);
+      // eslint-disable-next-line no-alert
+      alert(`Payment sent! Tx: ${txHash}`);
+    } catch (err) {
+      console.error('[pay] Failed to send payment', err);
+    }
+  }
+
   const { usdValue } = useSandUsdValue(AMOUNT_WEI, 18);
 
   return (
@@ -151,9 +165,14 @@ export function App() {
       <h1>Pay With Sand - Example</h1>
       <p>Amount: 1 SAND</p>
       <p>Approx in USD: {usdValue || 'Loading...'}</p>
-      <button onClick={preparePermitAndOpen} style={{ padding: '8px 12px' }}>
-        Pay with SAND
-      </button>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={preparePermitAndOpen} style={{ padding: '8px 12px' }}>
+          Pay with SAND (permit)
+        </button>
+        <button onClick={handlePayDirect} style={{ padding: '8px 12px' }}>
+          Pay with SAND (direct)
+        </button>
+      </div>
 
       <SandModal
         isOpen={open}
