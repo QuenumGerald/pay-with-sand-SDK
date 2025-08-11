@@ -6,9 +6,9 @@ export function App() {
   const [open, setOpen] = React.useState(false);
   const [args, setArgs] = React.useState<any | null>(null);
 
-  // Static values for the demo
-  const ORDER_BYTES32 = ethersUtils.formatBytes32String('ORDER-123');
-  const AMOUNT_WEI = '1000000000000000000'; // 1 SAND (18 decimals)
+  // Generate a fresh unique order id per attempt (avoid reusing the same order)
+  const makeOrderId = () => ethersUtils.formatBytes32String(`ORDER-${Date.now()}`);
+  const AMOUNT_WEI = '1000000000000000'; // 1 SAND (18 decimals)
   const MERCHANT = process.env.MERCHANT_ADDRESS || '0x0000000000000000000000000000000000000001';
   const PAYMENT_CONTRACT = process.env.REACT_APP_PAYMENT_CONTRACT_ADDRESS || '';
   // SAND token address (from env, fallback to Base Sepolia default)
@@ -109,12 +109,14 @@ export function App() {
 
       const from = owner;
       const data = JSON.stringify({
-        types: { EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' },
-        ], ...types },
+        types: {
+          EIP712Domain: [
+            { name: 'name', type: 'string' },
+            { name: 'version', type: 'string' },
+            { name: 'chainId', type: 'uint256' },
+            { name: 'verifyingContract', type: 'address' },
+          ], ...types
+        },
         primaryType: 'Permit',
         domain,
         message,
@@ -127,7 +129,7 @@ export function App() {
       const { v, r, s } = ethers.utils.splitSignature(signature);
 
       setArgs({
-        orderId: ORDER_BYTES32,
+        orderId: makeOrderId(),
         amount: AMOUNT_WEI,
         recipient: MERCHANT,
         deadline,
@@ -139,7 +141,7 @@ export function App() {
     } catch (err) {
       console.error('[permit] Failed to prepare permit', err);
       // Fallback: open without permit so you can see error in the modal
-      setArgs({ orderId: ORDER_BYTES32, amount: AMOUNT_WEI, recipient: MERCHANT });
+      setArgs({ orderId: makeOrderId(), amount: AMOUNT_WEI, recipient: MERCHANT });
       setOpen(true);
     }
   }
@@ -158,7 +160,7 @@ export function App() {
       <SandModal
         isOpen={open}
         onClose={() => setOpen(false)}
-        args={(args || { orderId: ORDER_BYTES32, amount: AMOUNT_WEI, recipient: MERCHANT }) as any}
+        args={(args || { orderId: makeOrderId(), amount: AMOUNT_WEI, recipient: MERCHANT }) as any}
         usdValue={usdValue || ''}
         onSuccess={(txHash) => {
           // eslint-disable-next-line no-alert
