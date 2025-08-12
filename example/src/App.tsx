@@ -146,6 +146,11 @@ export function App() {
     }
   }
 
+  function openClassic() {
+    setArgs({ orderId: makeOrderId(), amount: AMOUNT_WEI, recipient: MERCHANT });
+    setOpen(true);
+  }
+
   const { usdValue } = useSandUsdValue(AMOUNT_WEI, 18);
 
   return (
@@ -153,9 +158,14 @@ export function App() {
       <h1>Pay With Sand - Example</h1>
       <p>Amount: 1 SAND</p>
       <p>Approx in USD: {usdValue || 'Loading...'}</p>
-      <button onClick={preparePermitAndOpen} style={{ padding: '8px 12px' }}>
-        Pay with SAND
-      </button>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={preparePermitAndOpen} style={{ padding: '8px 12px' }}>
+          Pay with SAND (Permit)
+        </button>
+        <button onClick={openClassic} style={{ padding: '8px 12px' }}>
+          Pay with SAND (Classic)
+        </button>
+      </div>
 
       <SandModal
         isOpen={open}
