@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pay With Sand - Example</title>
+    <!-- Tailwind CDN for quick styling in example app -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Prevent long hashes/addresses from overflowing the modal */
+      .fixed.inset-0 .relative {
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
+      .fixed.inset-0 .relative * {
+        min-width: 0;
+      }
+      /* Prefer ellipsis for single-line long values like Order ID and Destination */
+      .fixed.inset-0 .relative a,
+      .fixed.inset-0 .relative .value,
+      .fixed.inset-0 .relative .hash,
+      .fixed.inset-0 .relative .address {
+        display: inline-block;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: bottom;
+      }
+      /* If values are laid out in a row, allow them to shrink */
+      .fixed.inset-0 .relative .flex > * {
+        min-width: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
