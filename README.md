@@ -1,12 +1,32 @@
 # @pay-with-sand/sdk
 
+React SDK to accept payments in $SAND with a drop-in modal, hooks, and utilities.
+
+- Latest stable: 0.1.1 (npm tag: latest)
+- Package: `@pay-with-sand/sdk`
+
+## Features
+
+- Drop-in modal UI: `SandModal`
+- Simple payment API via `payWithSand()` under the hood
+- Hooks for UX and pricing: `useSandPaymentStatus()`, `useSandUsdValue()`
+- EIP-2612 permit flow (single signed tx) with automatic fallback to approve+pay
+- Works with MetaMask and WalletConnect (WC v1 provider as peer)
+
 ## Installation
 
+Install the SDK and required peers:
+
 ```bash
-npm install @pay-with-sand/sdk wagmi viem ethers @walletconnect/web3-provider @metamask/providers
+npm i @pay-with-sand/sdk wagmi viem @walletconnect/web3-provider @metamask/providers
 ```
 
-## Usage
+Notes:
+
+- React 17 or 18 is required (peer).
+- Ethers is bundled by the SDK; you do not need to install it separately.
+
+## Quick Start
 
 ```tsx
 import React, { useState } from 'react';
@@ -15,26 +35,23 @@ import { SandModal, useSandPaymentStatus, useSandUsdValue } from '@pay-with-sand
 import type { PayArgs } from '@pay-with-sand/sdk';
 
 export function Checkout() {
-  const [orderId] = useState(() => ethers.utils.id('order-123'));
   const [isOpen, setOpen] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [orderId] = useState(() => ethers.utils.id('order-123'));
   const status = useSandPaymentStatus(orderId);
 
   const args: PayArgs = {
     amount: ethers.utils.parseUnits('1', 18).toString(),
     orderId,
-    recipient: '0xRecipientAddress',
-    // optional: permit fields
-    // deadline: Math.floor(Date.now() / 1000) + 3600,
-    // v, r, s
+    recipient: '0xRecipientAddress'
+    // Optional (EIP-2612): deadline, v, r, s
   };
 
-  // Compute USD display value for the given SAND amount
   const { usdValue } = useSandUsdValue(args.amount, 18);
 
   return (
     <>
-      <button onClick={() => setOpen(true)}>Payer 1 $SAND</button>
+      <button onClick={() => setOpen(true)}>Pay 1 $SAND</button>
       <SandModal
         isOpen={isOpen}
         onClose={() => setOpen(false)}
@@ -43,42 +60,142 @@ export function Checkout() {
         onSuccess={(hash) => setTxHash(hash)}
       />
       {txHash && <p>Tx hash: {txHash}</p>}
-      <p>Statut: {status}</p>
+      <p>Status: {status}</p>
     </>
   );
 }
 ```
 
-### Hook: useSandUsdValue
+## API Reference
 
-Small helper to compute and format the USD value for a SAND amount.
+### Types
 
 ```ts
-const { usdValue, priceUsd, loading, error } = useSandUsdValue(amountWei, 18);
+export type PayArgs = {
+  amount: string;              // token amount in smallest units (wei)
+  orderId: string;             // unique order identifier (bytes32-encodable)
+  recipient: string;           // destination address
+  // Optional EIP-2612 permit fields
+  deadline?: number;           // unix seconds
+  v?: number;
+  r?: string;
+  s?: string;
+};
 ```
 
-- `amountWei`: string | bigint | BigNumber (token amount in smallest units).
-- `decimals`: defaults to 18.
-- Returns:
-  - `usdValue`: formatted string, e.g. "$6.80" or `~` if unavailable
-  - `priceUsd`: unit price (number) or null
-  - `loading`: boolean
-  - `error`: Error | null
+### Components
+
+- `SandModal(props)`
+  - `isOpen: boolean`
+  - `onClose: () => void`
+  - `args: PayArgs`
+  - `usdValue: string` — formatted (e.g. `$6.80` or `~`)
+  - `onSuccess?: (txHash: string) => void`
+
+### Hooks
+
+- `useSandUsdValue(amountWei: string | bigint | BigNumber, decimals = 18)`
+  - Returns `{ usdValue: string, priceUsd: number | null, loading: boolean, error: Error | null }`
+
+- `useSandPaymentStatus(orderId: string)`
+  - Returns one of: `idle | pending | confirmed | failed` (string)
 
 ## Configuration
 
-The SDK expects the following environment variables to be defined:
+Set the following environment variables in `.env` or your process environment:
 
 | Variable | Description |
 |----------|-------------|
-| `INFURA_ID` | Infura project ID used for WalletConnect fallback |
-| `REACT_APP_PAYMENT_CONTRACT_ADDRESS` | Address of the payment contract |
+| `INFURA_ID` | Infura Project ID used by WalletConnect fallback |
+| `REACT_APP_PAYMENT_CONTRACT_ADDRESS` | Payment contract address |
 
-Add them to a `.env` file or set them in your environment before running your application.
+Optional price endpoint override. The endpoint should return a CoinGecko-like shape:
 
-### Permit vs Approve flow
+```json
+{ "the-sandbox": { "usd": 0.42 } }
+```
 
-If the permit signature parameters (`deadline`, `v`, `r`, `s`) are provided in `PayArgs`, the SDK uses the gasless permit flow (EIP-2612). Otherwise, it falls back to the traditional `pay` function which requires prior token approval.
+Environment override example:
 
-# Optional: override price API (must return { "the-sandbox": { "usd": number } })
-# PRICE_API_URL=https://your-proxy.example.com/the-sandbox-price
+```bash
+PRICE_API_URL=https://your-proxy.example.com/the-sandbox-price
+```
+
+## Wallets and Networks
+
+- MetaMask is used when present and selected.
+- WalletConnect is used when selected (requires `INFURA_ID`).
+- Example network in UI: Polygon (gas information is indicative).
+
+## Permit vs Approve
+
+If EIP‑2612 signature fields (`deadline`, `v`, `r`, `s`) are provided in `PayArgs`, the SDK uses a gasless permit flow (single signed transaction, no separate approval fee). Otherwise, it falls back to the classic `approve` + `pay` flow.
+
+### What are v, r, s?
+
+ECDSA signatures on secp256k1 (used by Ethereum) are composed of three parts:
+
+- **r**: first 32-byte component (hex string). Related to an x‑coordinate derived during signing.
+- **s**: second 32-byte component (hex string). On Ethereum it must be in “low‑s” form.
+- **v**: recovery id (number) enabling public key recovery from `(r, s)` and the message. Common values are `27` or `28`. Some libraries return `0/1`; you can convert by adding `27`.
+
+In EIP‑2612 (permit), you sign typed data (EIP‑712). Here is how to obtain and split a signature using ethers:
+
+```ts
+import { ethers } from 'ethers';
+
+// Example: sign EIP-712 permit typed data and extract v, r, s
+async function signPermitAndSplit(
+  wallet: ethers.Wallet,
+  domain: any,
+  types: any,
+  value: any
+) {
+  // 65-byte signature: r(32) + s(32) + v(1)
+  const signature = await wallet._signTypedData(domain, types, value);
+  const { v, r, s } = ethers.utils.splitSignature(signature);
+  return { v, r, s };
+}
+```
+
+Practical notes:
+
+- **Types**: `r` and `s` are `0x` hex strings (32 bytes). `v` is a number (27/28 or 0/1 depending on the source; if 0/1, add 27).
+- **Validation**: The contract will revert if the signature is invalid (wrong domain/chainId, expired `deadline`, mismatched owner, etc.).
+- **Security**: Always sign the correct EIP‑712 domain (name, version, chainId, verifyingContract) to avoid replay on other networks/contracts.
+
+## Error Handling
+
+- Most functions throw standard `Error` instances with descriptive messages.
+- Common causes:
+  - Missing env var: `REACT_APP_PAYMENT_CONTRACT_ADDRESS`
+  - WalletConnect path without `INFURA_ID`
+  - No MetaMask when MetaMask is explicitly selected
+
+## TypeScript
+
+- Types are shipped with the package (`dist/index.d.ts`).
+- Typical `tsconfig` settings: `strict`, `esModuleInterop`, `jsx: react-jsx`.
+
+## Example App
+
+See `example/` for a minimal Vite + React setup using the SDK. To run:
+
+```bash
+cd example
+npm i
+npm run dev
+```
+
+## Versioning / NPM Tags
+
+- Stable releases are published under the `latest` tag (e.g., `0.1.1`).
+- Install stable:
+
+```bash
+npm i @pay-with-sand/sdk
+```
+
+## License
+
+MIT
