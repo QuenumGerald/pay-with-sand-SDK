@@ -2,6 +2,8 @@ import { defineConfig, loadEnv } from 'vite';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'url';
+import { URL } from 'url';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -64,6 +66,8 @@ export default defineConfig(({ mode }) => {
     define: defines,
     resolve: {
       alias: {
+        // Shim WalletConnect v1 provider to avoid bundling it in the example app.
+        '@walletconnect/web3-provider': fileURLToPath(new URL('./src/shims/walletconnect-web3-provider.ts', import.meta.url)),
         util: require.resolve('util/'),
         events: require.resolve('events/'),
         stream: require.resolve('stream-browserify'),
@@ -75,6 +79,8 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       include: ['buffer', 'process', 'util', 'events', 'stream-browserify', 'assert', 'crypto-browserify', 'path-browserify'],
+      // Ensure Vite doesn't try to prebundle the WC v1 package
+      exclude: ['@walletconnect/web3-provider'],
     },
   };
 });

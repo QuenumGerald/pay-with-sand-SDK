@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@pay-with-sand/sdk": "^0.2.2"
+  }
+}

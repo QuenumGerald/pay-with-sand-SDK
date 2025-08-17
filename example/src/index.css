@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-container {
+  background: white;
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  padding: 2.5rem 2rem;
+  max-width: 420px;
+  width: 100%;
+  margin: 2rem auto;
+}
+
+.app-container h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(90deg, #7b2ff2, #f357a8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.app-container p {
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.pay-btn {
+  margin-top: 1.5rem;
+  font-size: 1.1rem;
+  padding: 0.75rem 2rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(90deg, #7b2ff2, #f357a8);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 8px 0 rgba(123,47,242,0.08);
+  transition: background 0.2s, transform 0.1s;
+}
+.pay-btn:hover {
+  background: linear-gradient(90deg, #f357a8, #7b2ff2);
+  transform: scale(1.04);
+}
