@@ -1,3 +1,5 @@
+ import type { Signer } from 'ethers'
+
 export interface PayArgs {
   amount: string;
   orderId: string;
@@ -8,6 +10,6 @@ export interface PayArgs {
   r?: string;
   s?: string;
   chainId?: number;
-  // optional wallet selector: defaults to auto (MetaMask if available else WalletConnect)
-  wallet?: 'metamask' | 'walletconnect';
+  // optional signer (recommended: pass from RainbowKit/wagmi)
+  signer?: Signer;
 }
