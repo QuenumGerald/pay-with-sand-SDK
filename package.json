@@ -1,6 +1,6 @@
 {
   "name": "@pay-with-sand/sdk",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -16,13 +16,13 @@
   },
   "peerDependencies": {
     "@metamask/providers": "^8.0.0",
-    "@walletconnect/web3-provider": "^1.8.0",
     "react": "^17.0.0 || ^18.0.0",
     "viem": "^0.3.0",
     "wagmi": "^1.4.0"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
+    "@walletconnect/ethereum-provider": "^2.11.0",
     "ethers": "^5.7.2",
     "react-icons": "^5.5.0",
     "react-toastify": "^9.1.1"

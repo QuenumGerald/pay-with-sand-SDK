@@ -2,7 +2,7 @@
 
 React SDK to accept payments in $SAND with a drop-in modal, hooks, and utilities.
 
-- Latest stable: 0.1.1 (npm tag: latest)
+- Latest stable: 0.2.0 (npm tag: latest)
 - Package: `@pay-with-sand/sdk`
 
 ## Features
@@ -11,7 +11,7 @@ React SDK to accept payments in $SAND with a drop-in modal, hooks, and utilities
 - Simple payment API via `payWithSand()` under the hood
 - Hooks for UX and pricing: `useSandPaymentStatus()`, `useSandUsdValue()`
 - EIP-2612 permit flow (single signed tx) with automatic fallback to approve+pay
-- Works with MetaMask and WalletConnect (WC v1 provider as peer)
+- Works with MetaMask and WalletConnect v2
 
 ## Network support
 
@@ -20,16 +20,17 @@ React SDK to accept payments in $SAND with a drop-in modal, hooks, and utilities
 
 ## Installation
 
-Install the SDK and required peers:
+Install the SDK:
 
 ```bash
-npm i @pay-with-sand/sdk wagmi viem @walletconnect/web3-provider @metamask/providers
+npm i @pay-with-sand/sdk
 ```
 
 Notes:
 
 - React 17 or 18 is required (peer).
 - Ethers is bundled by the SDK; you do not need to install it separately.
+- If you already use wagmi/viem, they remain compatible but are not required.
 
 ## Quick Start
 
@@ -85,6 +86,8 @@ export type PayArgs = {
   v?: number;
   r?: string;
   s?: string;
+  // Optional: prefer a specific chain id (defaults to 137 / Polygon)
+  chainId?: number;
 };
 ```
 
@@ -107,12 +110,15 @@ export type PayArgs = {
 
 ## Configuration
 
-Set the following environment variables in `.env` or your process environment:
+Set the following environment variables in `.env` or your process environment. The SDK now supports multi-chain with WalletConnect v2.
 
 | Variable | Description |
 |----------|-------------|
-| `INFURA_ID` | Infura Project ID used by WalletConnect fallback |
-| `REACT_APP_PAYMENT_CONTRACT_ADDRESS` | Payment contract address |
+| `WALLETCONNECT_PROJECT_ID` | WalletConnect Cloud Project ID (required for WalletConnect) |
+| `PAY_WITH_SAND_CHAIN_ID` | Preferred chain id (default: `137` for Polygon) |
+| `PAY_WITH_SAND_RPC_<chainId>` | RPC URL for the preferred chain (e.g., `PAY_WITH_SAND_RPC_137=https://polygon-rpc.com/`) |
+| `PAYMENT_CONTRACT_ADDRESS_<chainId>` | Payment contract address for that chain (e.g., `PAYMENT_CONTRACT_ADDRESS_137=0xB15626...`) |
+| `REACT_APP_PAYMENT_CONTRACT_ADDRESS` | Legacy single-network fallback (discouraged) |
 
 Optional price endpoint override. The endpoint should return a CoinGecko-like shape:
 
@@ -128,9 +134,9 @@ PRICE_API_URL=https://your-proxy.example.com/the-sandbox-price
 
 ## Wallets and Networks
 
-- MetaMask is used when present and selected.
-- WalletConnect is used when selected (requires `INFURA_ID`).
-- Example network in UI: Polygon (gas information is indicative).
+- MetaMask is used when present and selected. The SDK verifies `chainId` and will error with a clear message if you’re on the wrong network.
+- WalletConnect v2 is used when selected. Requires `WALLETCONNECT_PROJECT_ID`. The QR modal opens and the session is initialized on the configured `PAY_WITH_SAND_CHAIN_ID`.
+- Default network: Polygon (137). Other chains are supported by providing the appropriate env variables.
 
 ## Permit vs Approve
 
@@ -173,9 +179,10 @@ Practical notes:
 
 - Most functions throw standard `Error` instances with descriptive messages.
 - Common causes:
-  - Missing env var: `REACT_APP_PAYMENT_CONTRACT_ADDRESS`
-  - WalletConnect path without `INFURA_ID`
-  - No MetaMask when MetaMask is explicitly selected
+  - Missing env var: `WALLETCONNECT_PROJECT_ID` (when using WalletConnect)
+  - Wrong network: expected `PAY_WITH_SAND_CHAIN_ID`, got a different `chainId`
+  - Missing per-chain address: `PAYMENT_CONTRACT_ADDRESS_<chainId>` not provided
+  - Legacy setups: using `REACT_APP_PAYMENT_CONTRACT_ADDRESS` without matching the active chain
 
 ## TypeScript
 
@@ -192,9 +199,24 @@ npm i
 npm run dev
 ```
 
+Example `.env` for Polygon (example app variables typically prefixed with `VITE_`):
+
+```env
+# WalletConnect v2
+VITE_WALLETCONNECT_PROJECT_ID=your_wc_project_id
+
+# Chain selection (defaults to 137)
+VITE_PAY_WITH_SAND_CHAIN_ID=137
+VITE_PAY_WITH_SAND_RPC_137=https://polygon-rpc.com/
+
+# Contracts per chain
+VITE_PAYMENT_CONTRACT_ADDRESS_137=0xB15626D438168b4906c28716F0abEF3683287924
+VITE_SAND_TOKEN_ADDRESS_137=<SAND_TOKEN_ADDRESS_ON_POLYGON>
+```
+
 ## Versioning / NPM Tags
 
-- Stable releases are published under the `latest` tag (e.g., `0.1.1`).
+- Stable releases are published under the `latest` tag (e.g., `0.2.0`).
 - Install stable:
 
 ```bash
