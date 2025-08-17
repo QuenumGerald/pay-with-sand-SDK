@@ -15,6 +15,40 @@ export function App() {
   const SAND_TOKEN = process.env.SAND_TOKEN_ADDRESS || '0x4e8949E43d218aA6a38B05dd4EF4105238683f2D';
   const SAND_NAME_ENV = process.env.SAND_TOKEN_NAME || '';
 
+  // Ensure wallet is on Polygon mainnet (137). If chain is missing, add it.
+  async function ensurePolygonChain(eth: any, provider: ethers.providers.Web3Provider) {
+    const targetHex = '0x89'; // 137
+    const network = await provider.getNetwork();
+    if (network.chainId === 137) return;
+    try {
+      await eth.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: targetHex }],
+      });
+    } catch (switchError: any) {
+      // Unrecognized chain -> add it then switch
+      if (switchError?.code === 4902) {
+        await eth.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: targetHex,
+            chainName: 'Polygon Mainnet',
+            nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+            rpcUrls: ['https://polygon-rpc.com/', 'https://rpc.ankr.com/polygon'],
+            blockExplorerUrls: ['https://polygonscan.com']
+          }],
+        });
+        await eth.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: targetHex }],
+        });
+      } else {
+        throw switchError;
+      }
+    }
+    await new Promise((res) => setTimeout(res, 500));
+  }
+
   async function preparePermitAndOpen() {
     try {
       const eth = (window as any).ethereum;
@@ -25,16 +59,7 @@ export function App() {
       await provider.send('eth_requestAccounts', []);
       const signer = provider.getSigner();
       const owner = await signer.getAddress();
-      const network = await provider.getNetwork();
-      if (network.chainId !== 84532) {
-        // Base Sepolia chainId = 84532 (0x14A34)
-        await eth.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x14A34' }],
-        });
-        // small pause after switching chain to let provider settle
-        await new Promise((res) => setTimeout(res, 500));
-      }
+      await ensurePolygonChain(eth, provider);
 
       if (!PAYMENT_CONTRACT) throw new Error('Missing payment contract env');
 
@@ -80,7 +105,7 @@ export function App() {
       const domain = {
         name,
         version: '1',
-        chainId: 84532,
+        chainId: 137,
         verifyingContract: SAND_TOKEN,
       } as const;
 
@@ -146,6 +171,47 @@ export function App() {
     }
   }
 
+  // Open modal without permit (classic approve + pay)
+  async function openWithoutPermit() {
+    const eth = (window as any).ethereum;
+    if (eth) {
+      const provider = new ethers.providers.Web3Provider(eth);
+      provider.polling = false as any;
+      try {
+        await provider.send('eth_requestAccounts', []);
+        await ensurePolygonChain(eth, provider);
+        // Ensure allowance for PAYMENT_CONTRACT to avoid revert NOT_AUTHORIZED_ALLOWANCE
+        if (!PAYMENT_CONTRACT) throw new Error('Missing payment contract env');
+        const signer = provider.getSigner();
+        const owner = await signer.getAddress();
+        const erc20 = new ethers.Contract(
+          SAND_TOKEN,
+          [
+            'function allowance(address owner, address spender) view returns (uint256)',
+            'function approve(address spender, uint256 value) returns (bool)'
+          ],
+          signer
+        );
+        const current = await erc20.allowance(owner, PAYMENT_CONTRACT);
+        console.log('[allowance] owner', owner);
+        console.log('[allowance] token', SAND_TOKEN);
+        console.log('[allowance] spender', PAYMENT_CONTRACT);
+        console.log('[allowance] current', current.toString());
+        if (current.lt(AMOUNT_WEI)) {
+          const MAX = ethers.constants.MaxUint256;
+          console.log('[approve] sending MaxUint256 to avoid repeated approvals');
+          const tx = await erc20.approve(PAYMENT_CONTRACT, MAX);
+          await tx.wait();
+        }
+      } catch (e) {
+        console.warn('[openWithoutPermit] could not enforce Polygon chain', e);
+      }
+    }
+    setArgs({ orderId: makeOrderId(), amount: AMOUNT_WEI, recipient: MERCHANT });
+    setOpen(true);
+  }
+
+
   const { usdValue } = useSandUsdValue(AMOUNT_WEI, 18);
 
   return (
@@ -153,9 +219,23 @@ export function App() {
       <h1>Pay With Sand - Example</h1>
       <p>Amount: 1 SAND</p>
       <p>Approx in USD: {usdValue || 'Loading...'}</p>
-      <button onClick={preparePermitAndOpen} style={{ padding: '8px 12px' }}>
-        Pay with SAND
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={preparePermitAndOpen}
+          className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-5 py-2.5 text-white font-medium shadow hover:from-purple-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 active:scale-[.98] transition"
+          title="Payer avec SAND (permit)"
+        >
+          <span className="i-tabler:currency-ethereum" aria-hidden="true"></span>
+          Pay with SAND (permit)
+        </button>
+        <button
+          onClick={openWithoutPermit}
+          className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-gray-900 font-medium shadow ring-1 ring-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 active:scale-[.98] transition"
+          title="Payer avec SAND (approve + pay)"
+        >
+          Pay with SAND (approve + pay)
+        </button>
+      </div>
 
       <SandModal
         isOpen={open}
