@@ -6,10 +6,7 @@ import { Buffer } from 'buffer'
 import * as util from 'util'
 import processShim from 'process'
 import inherits from 'inherits'
-// Import ethers v5 from repo root to match SDK's ethers version
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { ethers as ethers5 } from '../node_modules/ethers'
+import { ethers } from 'ethers'
 
 // Polyfill Buffer for libs (e.g., WalletConnect v1) expecting it in the browser
 ;(globalThis as any).Buffer = (globalThis as any).Buffer || Buffer
@@ -34,7 +31,7 @@ function App() {
   const [open, setOpen] = React.useState(false)
   const [amount, setAmount] = React.useState('100000000000000000')
   const [orderId, setOrderId] = React.useState('TEST-ORDER-001')
-  const [recipient, setRecipient] = React.useState('0x0000000000000000000000000000000000000000')
+  const [recipient, setRecipient] = React.useState('')
   const [signer, setSigner] = React.useState<any | null>(null)
 
   const args: PayArgs = { amount, orderId, recipient }
@@ -48,12 +45,26 @@ function App() {
         return
       }
       await eth.request({ method: 'eth_requestAccounts' })
-      const provider = new ethers5.providers.Web3Provider(eth)
+      const provider = new ethers.providers.Web3Provider(eth)
       const s = await provider.getSigner()
+      try {
+        const addr = await s.getAddress()
+        // If user hasn't specified a recipient yet, default to their own address
+        setRecipient(prev => prev && prev.trim() !== '' ? prev : addr)
+      } catch {}
       setSigner(s)
     } catch (e) {
       console.error('connect error', e)
       alert('Failed to connect wallet')
+    }
+  }
+
+  const onPayClick = async () => {
+    // Open the modal immediately
+    setOpen(true)
+    // If not connected, try to connect in background
+    if (!signer) {
+      try { await connect() } catch {}
     }
   }
 
@@ -73,16 +84,13 @@ function App() {
         </label>
         <label>
           Destinataire (address)
-          <input value={recipient} onChange={e => setRecipient(e.target.value)} style={{ width: '100%' }} />
+          <input placeholder="0xRecipient" value={recipient} onChange={e => setRecipient(e.target.value)} style={{ width: '100%' }} />
         </label>
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={connect} style={{ marginTop: 16, padding: '10px 16px' }}>
-          Connect Wallet
-        </button>
-        <button onClick={() => setOpen(true)} style={{ marginTop: 16, padding: '10px 16px' }}>
-        Payer avec SAND (ouvrir la modale)
+        <button onClick={onPayClick} style={{ marginTop: 16, padding: '10px 16px' }}>
+          Payer avec SAND
         </button>
       </div>
 
