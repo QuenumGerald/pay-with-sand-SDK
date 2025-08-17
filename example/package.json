@@ -9,7 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@pay-with-sand/sdk": "^0.1.1-alpha.0",
+    "@pay-with-sand/sdk": "^0.2.1",
+    "ethers": "^5.7.2",
+    "@walletconnect/ethereum-provider": "^2.11.0",
+    "@walletconnect/modal": "^2.6.2",
+    "wagmi": "^1.4.0",
+    "viem": "^0.3.0",
+    "@metamask/providers": "^8.0.0",
     "assert": "^2.1.0",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.1",
