@@ -64,7 +64,13 @@ describe('payWithSand signer-based flow', () => {
   });
 
   it('throws if contract address is missing', async () => {
+    // Clear globals and use a chainId with no built-in default (e.g., 1)
     setEnv('REACT_APP_PAYMENT_CONTRACT_ADDRESS');
-    await expect(payWithSand({ ...baseArgs, signer: dummySigner } as any)).rejects.toThrow(/PAYMENT_CONTRACT_ADDRESS|REACT_APP_PAYMENT_CONTRACT_ADDRESS/i);
+    setEnv('PAYMENT_CONTRACT_ADDRESS_137');
+    setEnv('VITE_PAYMENT_CONTRACT_ADDRESS_137');
+    const signerNoDefault = { provider: { getNetwork: async () => ({ chainId: 1 }) } } as any;
+    await expect(
+      payWithSand({ ...baseArgs, signer: signerNoDefault, chainId: 1 } as any)
+    ).rejects.toThrow(/PAYMENT_CONTRACT_ADDRESS|VITE_PAYMENT_CONTRACT_ADDRESS|REACT_APP_PAYMENT_CONTRACT_ADDRESS/i);
   });
 });
