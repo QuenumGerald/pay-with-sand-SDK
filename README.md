@@ -7,16 +7,19 @@ React SDK to accept payments in $SAND with a drop-in modal, hooks, and utilities
 
 ## Features
 
-- Drop-in modal UI: `SandModal`
-- Simple payment API via `payWithSand()` under the hood
-- Hooks for UX and pricing: `useSandPaymentStatus()`, `useSandUsdValue()`
-- EIP-2612 permit flow (single signed tx) with automatic fallback to approve+pay
-- Works with wallets connected via RainbowKit/Wagmi (MetaMask, WalletConnect v2, etc.)
+ - Drop-in modal UI: `SandModal` with built-in wallet selector (MetaMask)
+ - Simple payment API via `payWithSand()` under the hood
+ - Hooks for UX and pricing: `useSandPaymentStatus()`, `useSandUsdValue()`
+ - Note: SAND on Polygon does not support EIP-2612 permit today; SDK performs approve → pay automatically
+ - Automatic ERC-20 allowance handling when not using permit (sends `approve` if needed)
+ - Styled with The Sandbox blue palette (button + title gradient)
+ - Works with wallets connected via RainbowKit/Wagmi (MetaMask, WalletConnect v2, etc.)
 
 ## Network support
 
 - Supported network: **Polygon (PoS)** 
 - Payment contract (Polygon): `0xB15626D438168b4906c28716F0abEF3683287924`
+ - Default SAND token (Polygon): `0xBbba073C31bF03b8ACf7c28EF0738DeCF3695683`
 
 ## Installation
 
@@ -82,7 +85,7 @@ export type PayArgs = {
   amount: string;              // token amount in smallest units (wei)
   orderId: string;             // unique order identifier (bytes32-encodable)
   recipient: string;           // destination address
-  // Optional EIP-2612 permit fields
+  // Optional EIP-2612 permit fields (not supported by SAND on Polygon; reserved for future compatibility)
   deadline?: number;           // unix seconds
   v?: number;
   r?: string;
@@ -114,13 +117,25 @@ export type PayArgs = {
 
 ## Configuration
 
-Set the following environment variables in `.env` or your process environment.
+Set the following environment variables in `.env` or your process environment (Vite/CRA supported). The SDK also includes safe defaults for Polygon mainnet.
 
-| Variable | Description |
-|----------|-------------|
-| `PAY_WITH_SAND_CHAIN_ID` | Preferred chain id (default: `137` for Polygon) |
-| `PAYMENT_CONTRACT_ADDRESS_<chainId>` | Payment contract address for that chain (e.g., `PAYMENT_CONTRACT_ADDRESS_137=0xB15626...`) |
-| `REACT_APP_PAYMENT_CONTRACT_ADDRESS` | Legacy single-network fallback (discouraged) |
+Supported keys (the first present value wins):
+
+- **Chain ID** (defaults to 137 if omitted):
+  - `VITE_PAY_WITH_SAND_CHAIN_ID`, `VITE_CHAIN_ID`, `PAY_WITH_SAND_CHAIN_ID`
+
+- **Payment contract address** (per-chain preferred):
+  - Per-chain: `PAYMENT_CONTRACT_ADDRESS_<chainId>`, `VITE_PAYMENT_CONTRACT_ADDRESS_<chainId>`
+  - Global fallback: `REACT_APP_PAYMENT_CONTRACT_ADDRESS`, `VITE_PAYMENT_CONTRACT_ADDRESS`
+  - Built-in default for 137: `0xB15626D438168b4906c28716F0abEF3683287924`
+
+- **SAND token address** (per-chain preferred):
+  - Per-chain: `SAND_TOKEN_ADDRESS_<chainId>`, `VITE_SAND_TOKEN_ADDRESS_<chainId>`
+  - Global fallback: `SAND_TOKEN_ADDRESS`, `VITE_SAND_TOKEN_ADDRESS`
+  - Built-in default for 137: `0xBbba073C31bF03b8ACf7c28EF0738DeCF3695683`
+
+- **WalletConnect / RPC (optional)**:
+  - `VITE_INFURA_ID` (falls back to `INFURA_ID`)
 
 Optional price endpoint override. The endpoint should return a CoinGecko-like shape:
 
@@ -140,9 +155,23 @@ PRICE_API_URL=https://your-proxy.example.com/the-sandbox-price
 - The SDK verifies `chainId` at runtime and throws if it differs from `PAY_WITH_SAND_CHAIN_ID` (default 137/Polygon).
 - Default network: Polygon (137). Other chains are supported by providing `PAYMENT_CONTRACT_ADDRESS_<chainId>`.
 
+### Modal wallet selector
+
+`SandModal` includes an internal wallet selector with visual cards for MetaMask and WalletConnect. The Confirm button is enabled only when:
+
+- A wallet is selected and connected
+- Required args are valid (recipient, amount, orderId)
+
 ## Permit vs Approve
 
-If EIP‑2612 signature fields (`deadline`, `v`, `r`, `s`) are provided in `PayArgs`, the SDK uses a gasless permit flow (single signed transaction, no separate approval fee). Otherwise, it falls back to the classic `approve` + `pay` flow.
+> Important
+>
+> The SAND token on Polygon currently does not implement EIP‑2612 permit. As a result, the SDK always uses the classic `approve` → `pay` flow. The permit fields in `PayArgs` are kept for forward compatibility and are ignored for SAND on Polygon.
+
+The SDK will:
+
+- Check SAND balance and throw a clear error if insufficient
+- Check allowance and, if needed, automatically send `approve(paymentContract, amount)` before calling `pay`
 
 ### What are v, r, s?
 
@@ -182,8 +211,16 @@ Practical notes:
 - Most functions throw standard `Error` instances with descriptive messages.
 - Common causes:
   - Wrong network: expected `PAY_WITH_SAND_CHAIN_ID`, got a different `chainId`
-  - Missing per-chain address: `PAYMENT_CONTRACT_ADDRESS_<chainId>` not provided
-  - Legacy setups: using `REACT_APP_PAYMENT_CONTRACT_ADDRESS` without matching the active chain
+  - Missing per-chain address: `PAYMENT_CONTRACT_ADDRESS_<chainId>` not provided (a default is included for 137)
+  - SAND token address missing (a default is included for 137)
+
+### Troubleshooting gas estimation reverts
+
+- Ensure the payer wallet is on Polygon (137)
+- Ensure `recipient` is a valid non-zero address and not equal to the payer (some contracts forbid self-payments)
+- Ensure `orderId` matches the contract’s business rules (e.g., registered, not consumed)
+- If not using permit, you’ll be prompted to approve first time; accept the approval tx
+- If using a custom SAND token address or different chain, verify decimals and addresses
 
 ## TypeScript
 
@@ -200,15 +237,18 @@ npm i
 npm run dev
 ```
 
-Example `.env` for Polygon (example app variables typically prefixed with `VITE_`):
+Example `.env` for Polygon (Vite variables):
 
 ```env
 # Chain selection (defaults to 137)
 VITE_PAY_WITH_SAND_CHAIN_ID=137
 
-# Contracts per chain
+# Contracts per chain (defaults exist for 137; override if needed)
 VITE_PAYMENT_CONTRACT_ADDRESS_137=0xB15626D438168b4906c28716F0abEF3683287924
-VITE_SAND_TOKEN_ADDRESS_137=<SAND_TOKEN_ADDRESS_ON_POLYGON>
+VITE_SAND_TOKEN_ADDRESS_137=0xBbba073C31bF03b8ACf7c28EF0738DeCF3695683
+
+# Optional WalletConnect RPC
+VITE_INFURA_ID=<your_infura_project_id>
 ```
 
 ## Versioning / NPM Tags

@@ -5,11 +5,7 @@ import { payWithSand } from '../payWithSand';
 import { ethers } from 'ethers';
 import { injectSandModalStyles } from './sandModalStyles';
 import MetaMaskIcon from '../assets/MetaMask-icon-fox.svg';
-import WalletConnectIcon from '../assets/WalletConnect.svg';
-// WalletConnect v1 provider is aliased in test-web/vite.config to a shim; optional at runtime
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import WalletConnectProvider from '@walletconnect/web3-provider';
+// WalletConnect removed per product requirement
 
 
 interface SandModalProps {
@@ -27,18 +23,10 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
   const [loading, setLoading] = React.useState(false);
   const [errMsg, setErrMsg] = React.useState<string | null>(null);
   const [internalSigner, setInternalSigner] = React.useState<ethers.Signer | null>(null);
-  const [connectedAddr, setConnectedAddr] = React.useState<string | null>(null);
-  const wcRef = React.useRef<any | null>(null);
-  const [selectedWallet, setSelectedWallet] = React.useState<'metamask' | 'walletconnect' | null>(null);
+  const [selectedWallet, setSelectedWallet] = React.useState<'metamask' | null>(null);
 
   // Ensure this hook runs on all renders to keep order stable
-  React.useEffect(() => {
-    return () => {
-      if (wcRef.current?.disconnect) {
-        try { wcRef.current.disconnect(); } catch {}
-      }
-    };
-  }, []);
+  React.useEffect(() => { return () => {}; }, []);
 
   const hasAllArgs = Boolean(args.orderId && args.recipient && args.amount && usdValue);
   const recipientLooksValid = typeof args.recipient === 'string' && /^0x[a-fA-F0-9]{40}$/.test(args.recipient);
@@ -54,9 +42,7 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
       await eth.request({ method: 'eth_requestAccounts' });
       const provider = new ethers.providers.Web3Provider(eth);
       const s = await provider.getSigner();
-      const addr = await s.getAddress();
       setInternalSigner(s);
-      setConnectedAddr(addr);
       setSelectedWallet('metamask');
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -64,26 +50,7 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
     }
   };
 
-  const connectWalletConnect = async () => {
-    setErrMsg(null);
-    try {
-      const infuraId = process.env.VITE_INFURA_ID || process.env.INFURA_ID;
-      const wc = new WalletConnectProvider({
-        infuraId,
-      });
-      wcRef.current = wc;
-      await wc.enable();
-      const provider = new ethers.providers.Web3Provider(wc as any);
-      const s = await provider.getSigner();
-      const addr = await s.getAddress();
-      setInternalSigner(s);
-      setConnectedAddr(addr);
-      setSelectedWallet('walletconnect');
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setErrMsg(msg);
-    }
-  };
+  // WalletConnect removed
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -155,23 +122,7 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
               <img src={MetaMaskIcon} alt="MetaMask" width={20} height={20} />
               MetaMask
             </button>
-            <button
-              className={`sand-wallet-btn ${selectedWallet === 'walletconnect' ? 'selected' : ''}`}
-              onClick={connectWalletConnect}
-              disabled={loading}
-            >
-              <img src={WalletConnectIcon} alt="WalletConnect" width={20} height={20} />
-              WalletConnect
-            </button>
-            {internalSigner && (
-              <button
-                className="sand-wallet-btn"
-                onClick={() => { setInternalSigner(null); setConnectedAddr(null); setSelectedWallet(null); }}
-                disabled={loading}
-              >
-                Disconnect
-              </button>
-            )}
+            {/* Disconnect button removed */}
           </div>
         </div>
 
