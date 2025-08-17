@@ -13,6 +13,11 @@ React SDK to accept payments in $SAND with a drop-in modal, hooks, and utilities
 - EIP-2612 permit flow (single signed tx) with automatic fallback to approve+pay
 - Works with MetaMask and WalletConnect (WC v1 provider as peer)
 
+## Network support
+
+- Supported network: **Polygon (PoS)** 
+- Payment contract (Polygon): `0xB15626D438168b4906c28716F0abEF3683287924`
+
 ## Installation
 
 Install the SDK and required peers:
