@@ -2,7 +2,7 @@
 
 React SDK to accept payments in $SAND with a drop-in modal, hooks, and utilities.
 
-- Latest stable: 0.2.2 (npm tag: latest)
+- Latest stable: 0.3.1 (npm tag: latest)
 - Package: `@pay-with-sand/sdk`
 
 ## Features
@@ -33,48 +33,6 @@ Notes:
 
 - React 17 or 18 is required (peer).
 - The SDK expects an external `ethers` v5 `Signer` (typically provided via RainbowKit/Wagmi). If your app already uses RainbowKit/Wagmi, you can pass the connected `Signer` directly.
-
-## Quick Start
-
-```tsx
-import React, { useMemo, useState } from 'react'
-import { ethers } from 'ethers'
-import { SandModal, useSandPaymentStatus, useSandUsdValue } from '@pay-with-sand/sdk'
-import type { PayArgs } from '@pay-with-sand/sdk'
-
-// Example with RainbowKit/Wagmi providing the Signer externally
-export function Checkout({ signer }: { signer: ethers.Signer | undefined }) {
-  const [isOpen, setOpen] = useState(false)
-  const [txHash, setTxHash] = useState<string | null>(null)
-  const orderId = useMemo(() => ethers.utils.id('order-123'), [])
-  const status = useSandPaymentStatus(orderId)
-
-  const args: PayArgs = {
-    amount: ethers.utils.parseUnits('1', 18).toString(),
-    orderId,
-    recipient: '0xRecipientAddress'
-    // Optional (EIP-2612): deadline, v, r, s
-  }
-
-  const { usdValue } = useSandUsdValue(args.amount, 18)
-
-  return (
-    <>
-      <button onClick={() => setOpen(true)}>Pay 1 $SAND</button>
-      <SandModal
-        isOpen={isOpen}
-        onClose={() => setOpen(false)}
-        args={args}
-        usdValue={usdValue}
-        signer={signer}
-        onSuccess={(hash) => setTxHash(hash)}
-      />
-      {txHash && <p>Tx hash: {txHash}</p>}
-      <p>Status: {status}</p>
-    </>
-  )
-}
-```
 
 ## API Reference
 
@@ -115,14 +73,14 @@ export type PayArgs = {
 - `useSandPaymentStatus(orderId: string)`
   - Returns one of: `idle | pending | confirmed | failed` (string)
 
-## Configuration
+## Environment configuration
 
-Set the following environment variables in `.env` or your process environment (Vite/CRA supported). The SDK also includes safe defaults for Polygon mainnet.
+Set the following environment variables in `.env` or your process environment (Vite/CRA supported). The SDK includes safe defaults for Polygon mainnet.
 
-Supported keys (the first present value wins):
+Supported keys (first present wins):
 
 - **Chain ID** (defaults to 137 if omitted):
-  - `VITE_PAY_WITH_SAND_CHAIN_ID`, `VITE_CHAIN_ID`, `PAY_WITH_SAND_CHAIN_ID`
+  - `VITE_PAY_WITH_SAND_CHAIN_ID`, `VITE_CHAIN_ID`
 
 - **Payment contract address** (per-chain preferred):
   - Per-chain: `PAYMENT_CONTRACT_ADDRESS_<chainId>`, `VITE_PAYMENT_CONTRACT_ADDRESS_<chainId>`
@@ -137,27 +95,26 @@ Supported keys (the first present value wins):
 - **WalletConnect / RPC (optional)**:
   - `VITE_INFURA_ID` (falls back to `INFURA_ID`)
 
-Optional price endpoint override. The endpoint should return a CoinGecko-like shape:
+Optional price endpoint override. The endpoint should return a CoinGecko-like shape or a plain number.
 
-```json
-{ "the-sandbox": { "usd": 0.42 } }
-```
-
-Environment override example:
+Example overrides:
 
 ```bash
+# CoinGecko-compatible JSON shape
 PRICE_API_URL=https://your-proxy.example.com/the-sandbox-price
+# Or point to an endpoint that returns a plain number
+# PRICE_API_JSON_PATH=data.token.usd
 ```
 
 ## Wallets and Networks
 
-- Connect wallets using RainbowKit/Wagmi (MetaMask, WalletConnect v2, etc.). Obtain an `ethers.Signer` v5 from the active connection and pass it to the SDK.
-- The SDK verifies `chainId` at runtime and throws if it differs from `PAY_WITH_SAND_CHAIN_ID` (default 137/Polygon).
-- Default network: Polygon (137). Other chains are supported by providing `PAYMENT_CONTRACT_ADDRESS_<chainId>`.
+- Connect wallets using RainbowKit/Wagmi (MetaMask, etc.). Obtain an `ethers.Signer` v5 from the active connection and pass it to the SDK.
+- The SDK verifies `chainId` at runtime and throws if it differs from your configured chain (default 137/Polygon via env or `args.chainId`).
+- Default network: Polygon (137). Other chains are supported by providing `PAYMENT_CONTRACT_ADDRESS_<chainId>` and `SAND_TOKEN_ADDRESS_<chainId>`.
 
 ### Modal wallet selector
 
-`SandModal` includes an internal wallet selector with visual cards for MetaMask and WalletConnect. The Confirm button is enabled only when:
+`SandModal` includes an internal wallet selector with a MetaMask card. The Confirm button is enabled only when:
 
 - A wallet is selected and connected
 - Required args are valid (recipient, amount, orderId)
@@ -210,7 +167,7 @@ Practical notes:
 
 - Most functions throw standard `Error` instances with descriptive messages.
 - Common causes:
-  - Wrong network: expected `PAY_WITH_SAND_CHAIN_ID`, got a different `chainId`
+  - Wrong network: expected configured `chainId`, got a different one
   - Missing per-chain address: `PAYMENT_CONTRACT_ADDRESS_<chainId>` not provided (a default is included for 137)
   - SAND token address missing (a default is included for 137)
 
@@ -242,6 +199,7 @@ Example `.env` for Polygon (Vite variables):
 ```env
 # Chain selection (defaults to 137)
 VITE_PAY_WITH_SAND_CHAIN_ID=137
+VITE_CHAIN_ID=137
 
 # Contracts per chain (defaults exist for 137; override if needed)
 VITE_PAYMENT_CONTRACT_ADDRESS_137=0xB15626D438168b4906c28716F0abEF3683287924
