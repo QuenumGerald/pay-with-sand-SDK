@@ -13,7 +13,7 @@ React SDK to accept payments in $SAND with a drop-in modal, hooks, and utilities
  - Note: SAND on Polygon does not support EIP-2612 permit today; SDK performs approve → pay automatically
  - Automatic ERC-20 allowance handling when not using permit (sends `approve` if needed)
  - Styled with The Sandbox blue palette (button + title gradient)
- - Works with wallets connected via RainbowKit/Wagmi (MetaMask, WalletConnect v2, etc.)
+ - Works with wallets connected via RainbowKit/Wagmi (MetaMask)
 
 ## Network support
 
@@ -184,17 +184,17 @@ Practical notes:
 - Types are shipped with the package (`dist/index.d.ts`).
 - Typical `tsconfig` settings: `strict`, `esModuleInterop`, `jsx: react-jsx`.
 
-## Example App
+## Local test web app
 
-See `example/` for a minimal Vite + React setup using the SDK. To run:
+Use `test-web/` for a minimal Vite + React setup using the SDK. To run:
 
 ```bash
-cd example
+cd test-web
 npm i
 npm run dev
 ```
 
-Example `.env` for Polygon (Vite variables):
+Example `.env` for Polygon (place in `test-web/.env`):
 
 ```env
 # Chain selection (defaults to 137)
