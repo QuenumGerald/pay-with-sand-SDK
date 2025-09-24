@@ -75,102 +75,125 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="sand-modal-overlay">
-      <div className="sand-modal-content">
-        {/* Header */}
-        <div className="sand-modal-header">
-          <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+      <div className="sand-modal-shell">
+        <div className="sand-modal-accent" aria-hidden="true" />
+        <div className="sand-modal-content">
+          {/* Header */}
+          <div className="sand-modal-header">
+            <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+              <span className="sand-modal-network-icon">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff" /></svg>
+              </span>
+              <span className="sand-modal-title">Pay with $SAND</span>
+            </div>
+            <button onClick={onClose} className="sand-modal-close">×</button>
+          </div>
+
+          <p className="sand-modal-subtitle">Expérience de paiement premium sécurisée sur Polygon.</p>
+
+          <div className="sand-modal-badges" role="list">
+            <span className="sand-modal-badge" role="listitem">Sécurisé</span>
+            <span className="sand-modal-badge" role="listitem">Temps réel</span>
+            <span className="sand-modal-badge" role="listitem">Non-custodial</span>
+          </div>
+
+          {/* Amount */}
+          <div className="sand-modal-amount-box">
+            <div className="sand-modal-amount">{amount} $SAND</div>
+            <div className="sand-modal-usd">{usdValue}</div>
+            <div className="sand-modal-amount-details">
+              <div>
+                <span className="sand-modal-amount-details-label">Débit estimé</span>
+                <span className="sand-modal-amount-details-value">Immédiat</span>
+              </div>
+              <div>
+                <span className="sand-modal-amount-details-label">Statut</span>
+                <span className="sand-modal-amount-details-value sand-modal-status-pill">Prêt</span>
+              </div>
+            </div>
+          </div>
+          {/* Validation status (inline, non-blocking for wallet selection) */}
+          {(!hasAllArgs || !recipientLooksValid) && (
+            <div className="sand-modal-error">
+              {!hasAllArgs ? 'Missing required payment information.' : 'Recipient address looks invalid.'}
+            </div>
+          )}
+
+          {/* Network */}
+          <div className="sand-modal-network">
             <span className="sand-modal-network-icon">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff" /></svg>
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#7b3fe4" /></svg>
             </span>
-            <span className="sand-modal-title">Pay with $SAND</span>
+            <div>
+              <div className="sand-modal-network-label">Polygon</div>
+              <div className="sand-modal-network-gas">gas ≈ 0.03 USD</div>
+            </div>
           </div>
-          <button onClick={onClose} className="sand-modal-close">×</button>
-        </div>
 
-        {/* Amount */}
-        <div className="sand-modal-amount-box">
-          <div className="sand-modal-amount">{amount} $SAND</div>
-          <div className="sand-modal-usd">{usdValue}</div>
-        </div>
-        {/* Validation status (inline, non-blocking for wallet selection) */}
-        {(!hasAllArgs || !recipientLooksValid) && (
-          <div className="sand-modal-error">
-            {!hasAllArgs ? 'Missing required payment information.' : 'Recipient address looks invalid.'}
+          {/* Wallet chooser (always visible so user can change wallet) */}
+          <div className="sand-wallets">
+            <div className="sand-wallets-title">Select Wallet</div>
+            <div className="sand-wallets-row">
+              <button
+                className={`sand-wallet-btn ${selectedWallet === 'metamask' ? 'selected' : ''}`}
+                onClick={connectMetaMask}
+                disabled={loading}
+              >
+                <img src={MetaMaskIcon} alt="MetaMask" width={20} height={20} />
+                MetaMask
+              </button>
+              {/* Disconnect button removed */}
+            </div>
           </div>
-        )}
 
-        {/* Network */}
-        <div className="sand-modal-network">
-          <span className="sand-modal-network-icon">
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#7b3fe4" /></svg>
-          </span>
-          <div>
-            <div className="sand-modal-network-label">Polygon</div>
-            <div className="sand-modal-network-gas">gas ≈ 0.03 USD</div>
+          {/* Connection status / errors */}
+          {errMsg && (
+            <div className="sand-modal-error">
+              {errMsg}
+            </div>
+          )}
+
+          <div className="sand-modal-divider" aria-hidden="true" />
+
+          {/* Order Recap */}
+          <div className="sand-modal-recap">
+            <div className="sand-modal-recap-label">Order Recap</div>
+            <div className="sand-modal-recap-box">
+              <div className="sand-modal-row">
+                <span>Order ID</span>
+                <span style={{maxWidth:'70%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{orderId}</span>
+              </div>
+              <div className="sand-modal-row">
+                <span>Destination</span>
+                <span style={{maxWidth:'70%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{destination}</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Wallet chooser (always visible so user can change wallet) */}
-        <div className="sand-wallets">
-          <div className="sand-wallets-title">Select Wallet</div>
-          <div className="sand-wallets-row">
+          {/* Action buttons */}
+          <div className="sand-modal-actions">
             <button
-              className={`sand-wallet-btn ${selectedWallet === 'metamask' ? 'selected' : ''}`}
-              onClick={connectMetaMask}
+              className="sand-modal-btn cancel"
+              onClick={onClose}
               disabled={loading}
             >
-              <img src={MetaMaskIcon} alt="MetaMask" width={20} height={20} />
-              MetaMask
+              Cancel
             </button>
-            {/* Disconnect button removed */}
+            <button
+              className="sand-modal-btn confirm"
+              onClick={handleConfirm}
+              disabled={
+                loading ||
+                !chosenSigner ||
+                !hasAllArgs ||
+                !recipientLooksValid
+              }
+            >
+              {loading ? 'Processing…' : 'Confirm & Pay'}
+            </button>
+          </div>
           </div>
         </div>
-
-        {/* Connection status / errors */}
-        {errMsg && (
-          <div className="sand-modal-error">
-            {errMsg}
-          </div>
-        )}
-
-        {/* Order Recap */}
-        <div className="sand-modal-recap">
-          <div className="sand-modal-recap-label">Order Recap</div>
-          <div className="sand-modal-recap-box">
-            <div className="sand-modal-row">
-              <span>Order ID</span>
-              <span style={{maxWidth:'70%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{orderId}</span>
-            </div>
-            <div className="sand-modal-row">
-              <span>Destination</span>
-              <span style={{maxWidth:'70%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{destination}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="sand-modal-actions">
-          <button
-            className="sand-modal-btn cancel"
-            onClick={onClose}
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button
-            className="sand-modal-btn confirm"
-            onClick={handleConfirm}
-            disabled={
-              loading ||
-              !chosenSigner ||
-              !hasAllArgs ||
-              !recipientLooksValid
-            }
-          >
-            {loading ? 'Processing…' : 'Confirm & Pay'}
-          </button>
-        </div>
-      </div>
-    </Dialog>
-  );
-}
+      </Dialog>
+    );
+  }
