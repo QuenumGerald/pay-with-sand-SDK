@@ -26,7 +26,7 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
   const [selectedWallet, setSelectedWallet] = React.useState<'metamask' | null>(null);
 
   // Ensure this hook runs on all renders to keep order stable
-  React.useEffect(() => { return () => {}; }, []);
+  React.useEffect(() => { return () => { }; }, []);
 
   const hasAllArgs = Boolean(args.orderId && args.recipient && args.amount && usdValue);
   const recipientLooksValid = typeof args.recipient === 'string' && /^0x[a-fA-F0-9]{40}$/.test(args.recipient);
@@ -80,7 +80,7 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
         <div className="sand-modal-content">
           {/* Header */}
           <div className="sand-modal-header">
-            <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span className="sand-modal-network-icon">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff" /></svg>
               </span>
@@ -89,27 +89,12 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
             <button onClick={onClose} className="sand-modal-close">×</button>
           </div>
 
-          <p className="sand-modal-subtitle">Expérience de paiement premium sécurisée sur Polygon.</p>
-
-          <div className="sand-modal-badges" role="list">
-            <span className="sand-modal-badge" role="listitem">Sécurisé</span>
-            <span className="sand-modal-badge" role="listitem">Temps réel</span>
-            <span className="sand-modal-badge" role="listitem">Non-custodial</span>
-          </div>
 
           {/* Amount */}
           <div className="sand-modal-amount-box">
             <div className="sand-modal-amount">{amount} $SAND</div>
             <div className="sand-modal-usd">{usdValue}</div>
             <div className="sand-modal-amount-details">
-              <div>
-                <span className="sand-modal-amount-details-label">Débit estimé</span>
-                <span className="sand-modal-amount-details-value">Immédiat</span>
-              </div>
-              <div>
-                <span className="sand-modal-amount-details-label">Statut</span>
-                <span className="sand-modal-amount-details-value sand-modal-status-pill">Prêt</span>
-              </div>
             </div>
           </div>
           {/* Validation status (inline, non-blocking for wallet selection) */}
@@ -161,11 +146,11 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
             <div className="sand-modal-recap-box">
               <div className="sand-modal-row">
                 <span>Order ID</span>
-                <span style={{maxWidth:'70%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{orderId}</span>
+                <span style={{ maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{orderId}</span>
               </div>
               <div className="sand-modal-row">
                 <span>Destination</span>
-                <span style={{maxWidth:'70%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{destination}</span>
+                <span style={{ maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{destination}</span>
               </div>
             </div>
           </div>
@@ -192,8 +177,8 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
               {loading ? 'Processing…' : 'Confirm & Pay'}
             </button>
           </div>
-          </div>
         </div>
-      </Dialog>
-    );
-  }
+      </div>
+    </Dialog>
+  );
+}
