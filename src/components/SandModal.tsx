@@ -5,6 +5,7 @@ import { payWithSand } from '../payWithSand';
 import { ethers } from 'ethers';
 import { injectSandModalStyles } from './sandModalStyles';
 import MetaMaskIcon from '../assets/MetaMask-icon-fox.svg';
+import SandLogo from '../assets/SandLogo.svg';
 // WalletConnect removed per product requirement
 
 
@@ -78,9 +79,9 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
       <div className="sand-modal-content">
         {/* Header */}
         <div className="sand-modal-header">
-          <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
-            <span className="sand-modal-network-icon">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff" /></svg>
+          <div className="sand-modal-header-left">
+            <span className="sand-modal-logo">
+              <img src={SandLogo} alt="Sandbox S logo" width={32} height={32} />
             </span>
             <span className="sand-modal-title">Pay with $SAND</span>
           </div>
