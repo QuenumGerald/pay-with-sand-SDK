@@ -40,6 +40,18 @@ const sandModalStyles = `
 .sand-modal-header {
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;
 }
+.sand-modal-header-left {
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.sand-modal-logo {
+  width: 2.25rem; height: 2.25rem; border-radius: 0.75rem;
+  background: rgba(255,255,255,0.08);
+  display: inline-flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.sand-modal-logo img {
+  width: 100%; height: 100%; object-fit: cover;
+}
 .sand-modal-title {
   font-size: 1.35rem; font-weight: 700;
   background: linear-gradient(90deg, #00ADEF, #00D1FF);

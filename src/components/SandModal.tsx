@@ -5,6 +5,7 @@ import { payWithSand } from '../payWithSand';
 import { ethers } from 'ethers';
 import { injectSandModalStyles } from './sandModalStyles';
 import MetaMaskIcon from '../assets/MetaMask-icon-fox.svg';
+import SandLogo from '../assets/SandLogo.svg';
 // WalletConnect removed per product requirement
 
 
@@ -68,13 +69,13 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
       setLoading(false);
     }
   };
-
   const orderId = args.orderId;
   const destination = args.recipient;
   const amount = ethers.utils.formatUnits(args.amount, 18);
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="sand-modal-overlay">
+
       <div className="sand-modal-shell">
         <div className="sand-modal-accent" aria-hidden="true" />
         <div className="sand-modal-content">
