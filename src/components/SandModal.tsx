@@ -4,7 +4,8 @@ import type { PayArgs } from '../types';
 import { payWithSand } from '../payWithSand';
 import { ethers } from 'ethers';
 import { injectSandModalStyles } from './sandModalStyles';
-import MetaMaskIcon from '../assets/MetaMask-icon-fox.svg';
+import { useAccount, useDisconnect, useWalletClient, type WalletClient } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import SandLogo from '../assets/SandLogo.svg';
 // WalletConnect removed per product requirement
 
@@ -24,7 +25,27 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
   const [loading, setLoading] = React.useState(false);
   const [errMsg, setErrMsg] = React.useState<string | null>(null);
   const [internalSigner, setInternalSigner] = React.useState<ethers.Signer | null>(null);
-  const [selectedWallet, setSelectedWallet] = React.useState<'metamask' | null>(null);
+  const [selectedWallet, setSelectedWallet] = React.useState<'rainbowkit' | null>(null);
+  const { data: walletClient } = useWalletClient();
+  const { isConnected, address } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { openConnectModal } = useConnectModal();
+
+  const addressLabel = React.useMemo(() => {
+    if (!address) return null;
+    return `${address.slice(0, 6)}…${address.slice(-4)}`;
+  }, [address]);
+
+  React.useEffect(() => {
+    if (walletClient) {
+      const signerFromWallet = walletClientToEthersSigner(walletClient);
+      setInternalSigner(signerFromWallet);
+      setSelectedWallet('rainbowkit');
+    } else {
+      setInternalSigner(null);
+      setSelectedWallet(null);
+    }
+  }, [walletClient]);
 
   // Ensure this hook runs on all renders to keep order stable
   React.useEffect(() => { return () => { }; }, []);
@@ -35,20 +56,22 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
   // Prefer the signer selected in the modal (internal) so the user can override a parent-provided signer
   const chosenSigner = internalSigner ?? signer ?? null;
 
-  const connectMetaMask = async () => {
+  const connectRainbowKit = () => {
     setErrMsg(null);
-    try {
-      const eth = (window as any).ethereum;
-      if (!eth) throw new Error('MetaMask not found');
-      await eth.request({ method: 'eth_requestAccounts' });
-      const provider = new ethers.providers.Web3Provider(eth);
-      const s = await provider.getSigner();
-      setInternalSigner(s);
-      setSelectedWallet('metamask');
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setErrMsg(msg);
+    if (openConnectModal) {
+      openConnectModal();
+    } else {
+      setErrMsg('RainbowKit connect modal unavailable. Ensure RainbowKitProvider is mounted.');
     }
+  };
+
+  const disconnectRainbowKit = () => {
+    setErrMsg(null);
+    if (typeof disconnect === 'function') {
+      disconnect();
+    }
+    setInternalSigner(null);
+    setSelectedWallet(null);
   };
 
   // WalletConnect removed
@@ -121,14 +144,22 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
             <div className="sand-wallets-title">Select Wallet</div>
             <div className="sand-wallets-row">
               <button
-                className={`sand-wallet-btn ${selectedWallet === 'metamask' ? 'selected' : ''}`}
-                onClick={connectMetaMask}
+                className={`sand-wallet-btn ${selectedWallet === 'rainbowkit' ? 'selected' : ''}`}
+                onClick={connectRainbowKit}
                 disabled={loading}
               >
-                <img src={MetaMaskIcon} alt="MetaMask" width={20} height={20} />
-                MetaMask
+                <img src={SandLogo} alt="RainbowKit" width={20} height={20} />
+                {isConnected ? (addressLabel ?? 'Connected') : 'Connect Wallet'}
               </button>
-              {/* Disconnect button removed */}
+              {isConnected && (
+                <button
+                  className="sand-wallet-btn"
+                  onClick={disconnectRainbowKit}
+                  disabled={loading}
+                >
+                  Disconnect
+                </button>
+              )}
             </div>
           </div>
 
@@ -182,4 +213,18 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
       </div>
     </Dialog>
   );
+}
+
+function walletClientToEthersSigner(walletClient: WalletClient): ethers.Signer {
+  const { account, chain } = walletClient;
+  const eip1193Provider = {
+    request: async (args: { method: string; params?: unknown[] }) => {
+      return walletClient.request(args as any);
+    },
+  };
+  const provider = new ethers.providers.Web3Provider(
+    eip1193Provider as unknown as ethers.providers.ExternalProvider,
+    chain?.id
+  );
+  return provider.getSigner(account.address);
 }

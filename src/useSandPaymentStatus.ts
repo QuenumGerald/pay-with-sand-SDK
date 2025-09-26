@@ -26,7 +26,7 @@ export function useSandPaymentStatus(orderId: string) {
       } else {
         // For WalletConnect, we'll need to handle this differently in a real app
         // This is a simplified version that will need to be adapted to your needs
-        throw new Error('Please use a Web3 provider like MetaMask or WalletConnect');
+        throw new Error('Please use a Web3 provider connected via RainbowKit or WalletConnect');
       }
 
       const contractAddress = process.env.REACT_APP_PAYMENT_CONTRACT_ADDRESS;
