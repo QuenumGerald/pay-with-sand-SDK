@@ -7,13 +7,13 @@ React SDK to accept payments in $SAND with a drop-in modal, hooks, and utilities
 
 ## Features
 
- - Drop-in modal UI: `SandModal` with built-in wallet selector (MetaMask)
+ - Drop-in modal UI: `SandModal` with a RainbowKit-powered wallet connect button
  - Simple payment API via `payWithSand()` under the hood
  - Hooks for UX and pricing: `useSandPaymentStatus()`, `useSandUsdValue()`
  - Note: SAND on Polygon does not support EIP-2612 permit today; SDK performs approve → pay automatically
  - Automatic ERC-20 allowance handling when not using permit (sends `approve` if needed)
  - Styled with The Sandbox blue palette (button + title gradient)
- - Works with wallets connected via RainbowKit/Wagmi (MetaMask)
+ - Works with wallets connected via RainbowKit/Wagmi (MetaMask, WalletConnect, Ledger, etc.)
 
 ## Network support
 
@@ -114,7 +114,7 @@ PRICE_API_URL=https://your-proxy.example.com/the-sandbox-price
 
 ### Modal wallet selector
 
-`SandModal` includes an internal wallet selector with a MetaMask card. The Confirm button is enabled only when:
+`SandModal` includes an internal wallet selector backed by RainbowKit. The Confirm button is enabled only when:
 
 - A wallet is selected and connected
 - Required args are valid (recipient, amount, orderId)
