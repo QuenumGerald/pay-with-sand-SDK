@@ -2,37 +2,123 @@
 
 React SDK to accept payments in $SAND with a drop-in modal, hooks, and utilities.
 
-- Latest stable: 0.3.1 (npm tag: latest)
+- Latest stable: 0.4.0 (npm tag: latest)
 - Package: `@pay-with-sand/sdk`
 
 ## Features
 
- - Drop-in modal UI: `SandModal` with built-in wallet selector (MetaMask)
- - Simple payment API via `payWithSand()` under the hood
- - Hooks for UX and pricing: `useSandPaymentStatus()`, `useSandUsdValue()`
- - Note: SAND on Polygon does not support EIP-2612 permit today; SDK performs approve → pay automatically
- - Automatic ERC-20 allowance handling when not using permit (sends `approve` if needed)
- - Styled with The Sandbox blue palette (button + title gradient)
- - Works with wallets connected via RainbowKit/Wagmi (MetaMask)
+- 🎨 **Modern UI** - Clean, intuitive interface for optimal user experience
+- 📱 **Fully Responsive** - Works seamlessly on all devices, from mobile to desktop
+- 🌓 **Light/Dark Themes** - Built-in system theme preference support
+- ⚡ **Optimized Performance** - Fast loading and smooth animations
+- 🔌 **Easy Integration** - Ready-to-use components with advanced customization
+- 🔒 **Secure** - Safe transaction and wallet connection handling
+- 💳 **Wallet Support** - MetaMask and other Ethereum-compatible wallets
+- 📊 **Payment Tracking** - Real-time transaction status hooks
+- 🛠 **Simple API** - `payWithSand()` for quick and easy integration
 
-## Network support
+## 🖼️ Preview
 
-- Supported network: **Polygon (PoS)** 
-- Payment contract (Polygon): `0xB15626D438168b4906c28716F0abEF3683287924`
- - Default SAND token (Polygon): `0xBbba073C31bF03b8ACf7c28EF0738DeCF3695683`
+<div align="center">
+  <img src="screenshots/modal-light.png" alt="Payment Modal - Light Theme" width="45%" />
+  <img src="screenshots/modal-dark.png" alt="Payment Modal - Dark Theme" width="45%" />
+  
+  *Modern interface with light/dark theme support*
+</div>
+
+## Supported Network
+
+- Network: **Polygon (PoS)** 
+- Payment Contract (Polygon): `0xB15626D438168b4906c28716F0abEF3683287924`
+- Default SAND Token (Polygon): `0xBbba073C31bF03b8ACf7c28EF0738DeCF3695683`
 
 ## Installation
 
-Install the SDK:
+Install the SDK with npm:
 
 ```bash
 npm i @pay-with-sand/sdk
 ```
 
-Notes:
+**Prerequisites:**
+- React 17 or 18
+- An `ethers` v5 `Signer` object (typically provided by your wallet connection solution)
 
-- React 17 or 18 is required (peer).
-- The SDK expects an external `ethers` v5 `Signer` (typically provided via RainbowKit/Wagmi). If your app already uses RainbowKit/Wagmi, you can pass the connected `Signer` directly.
+## Basic Usage
+
+### 1. Wrap your app with `SandProvider`
+
+```tsx
+import { SandProvider } from '@pay-with-sand/sdk';
+
+function App() {
+  return (
+    <SandProvider>
+      <YourApp />
+    </SandProvider>
+  );
+}
+```
+
+### 2. Use the `SandModal` component
+
+```tsx
+import { SandModal } from '@pay-with-sand/sdk';
+
+function PaymentButton() {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <>
+      <button onClick={() => setIsOpen(true)}>
+        Pay with SAND
+      </button>
+      <SandModal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        onSuccess={(txHash) => console.log('Payment successful:', txHash)}
+        onError={(error) => console.error('Payment error:', error)}
+        amount="10" // Amount in SAND
+        receiver="0x123..." // Recipient address
+      />
+    </>
+  );
+}
+```
+
+## Hooks
+
+### `useSandPaymentStatus`
+
+```tsx
+import { useSandPaymentStatus } from '@pay-with-sand/sdk';
+
+function PaymentStatus({ txHash }) {
+  const { status, error } = useSandPaymentStatus(txHash);
+  
+  return (
+    <div>
+      Payment status: {status}
+      {error && <div>Error: {error.message}</div>}
+    </div>
+  );
+}
+```
+
+### `useSandUsdValue`
+
+```tsx
+import { useSandUsdValue } from '@pay-with-sand/sdk';
+
+function SandPrice() {
+  const { price, loading, error } = useSandUsdValue();
+  
+  if (loading) return <div>Loading SAND price...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  
+  return <div>1 SAND = ${price}</div>;
+}
+```
 
 ## API Reference
 
@@ -40,110 +126,85 @@ Notes:
 
 ```ts
 export type PayArgs = {
-  amount: string;              // token amount in smallest units (wei)
-  orderId: string;             // unique order identifier (bytes32-encodable)
-  recipient: string;           // destination address
-  // Optional EIP-2612 permit fields (not supported by SAND on Polygon; reserved for future compatibility)
-  deadline?: number;           // unix seconds
-  v?: number;
-  r?: string;
-  s?: string;
-  // Optional: prefer a specific chain id (defaults to 137 / Polygon)
-  chainId?: number;
-  // Optional: pass a connected ethers v5 Signer (recommended)
-  signer?: import('ethers').Signer;
+  amount: string;              // Token amount in smallest unit (wei)
+  orderId: string;             // Unique order identifier (bytes32-encodable)
+  recipient: string;           // Destination address
+  tokenAddress?: string;       // Defaults to SAND on Polygon
+  permitArgs?: {
+    deadline: number;          // Block timestamp when permit expires
+    v: number;                // ECDSA recovery id (27/28 or 0/1)
+    r: string;                // ECDSA signature r
+    s: string;                // ECDSA signature s
+  };
 };
+
+interface SandProviderProps {
+  children: React.ReactNode;
+  theme?: 'light' | 'dark' | 'system';
+  sandTokenAddress?: string;   // Defaults to SAND on Polygon
+  paymentContractAddress?: string; // Defaults to payment contract on Polygon
+  // Default for chain 137 (Polygon): `0xBbba073C31bF03b8ACf7c28EF0738DeCF3695683`
+}
 ```
 
-### Components
+## Configuration
 
-- `SandModal(props)`
-  - `isOpen: boolean`
-  - `onClose: () => void`
-  - `args: PayArgs`
-  - `usdValue: string` — formatted (e.g. `$6.80` or `~`)
-  - `onSuccess?: (txHash: string) => void`
-  - `signer?: Signer` — connected wallet signer (you can also omit here and call `payWithSand({ ...args, signer })` directly)
-
-### Hooks
-
-- `useSandUsdValue(amountWei: string | bigint | BigNumber, decimals = 18)`
-  - Returns `{ usdValue: string, priceUsd: number | null, loading: boolean, error: Error | null }`
-
-- `useSandPaymentStatus(orderId: string)`
-  - Returns one of: `idle | pending | confirmed | failed` (string)
-
-## Environment configuration
-
-Set the following environment variables in `.env` or your process environment (Vite/CRA supported). The SDK includes safe defaults for Polygon mainnet.
-
-Supported keys (first present wins):
-
-- **Chain ID** (defaults to 137 if omitted):
-  - `VITE_PAY_WITH_SAND_CHAIN_ID`, `VITE_CHAIN_ID`
-
-- **Payment contract address** (per-chain preferred):
-  - Per-chain: `PAYMENT_CONTRACT_ADDRESS_<chainId>`, `VITE_PAYMENT_CONTRACT_ADDRESS_<chainId>`
-  - Global fallback: `REACT_APP_PAYMENT_CONTRACT_ADDRESS`, `VITE_PAYMENT_CONTRACT_ADDRESS`
-  - Built-in default for 137: `0xB15626D438168b4906c28716F0abEF3683287924`
-
-- **SAND token address** (per-chain preferred):
-  - Per-chain: `SAND_TOKEN_ADDRESS_<chainId>`, `VITE_SAND_TOKEN_ADDRESS_<chainId>`
-  - Global fallback: `SAND_TOKEN_ADDRESS`, `VITE_SAND_TOKEN_ADDRESS`
-  - Built-in default for 137: `0xBbba073C31bF03b8ACf7c28EF0738DeCF3695683`
+### Environment Variables
 
 - **WalletConnect / RPC (optional)**:
   - `VITE_INFURA_ID` (falls back to `INFURA_ID`)
 
-Optional price endpoint override. The endpoint should return a CoinGecko-like shape or a plain number.
+### Price Endpoint Customization
 
-Example overrides:
+You can override the price endpoint. The endpoint should return a CoinGecko-compatible shape or a plain number.
+
+Example configuration:
 
 ```bash
 # CoinGecko-compatible JSON shape
-PRICE_API_URL=https://your-proxy.example.com/the-sandbox-price
+PRICE_API_URL=https://your-api.example.com/sand-price
 # Or point to an endpoint that returns a plain number
 # PRICE_API_JSON_PATH=data.token.usd
 ```
 
 ## Wallets and Networks
 
-- Connect wallets using RainbowKit/Wagmi (MetaMask, etc.). Obtain an `ethers.Signer` v5 from the active connection and pass it to the SDK.
-- The SDK verifies `chainId` at runtime and throws if it differs from your configured chain (default 137/Polygon via env or `args.chainId`).
+- Connect wallets using your preferred solution (MetaMask, etc.). Get an `ethers.Signer` v5 from the active connection and pass it to the SDK.
+- The SDK checks the `chainId` at runtime and throws if it differs from the configured chain (default 137/Polygon via environment variables or `args.chainId`).
 - Default network: Polygon (137). Other chains are supported by providing `PAYMENT_CONTRACT_ADDRESS_<chainId>` and `SAND_TOKEN_ADDRESS_<chainId>`.
 
-### Modal wallet selector
+### Modal Wallet Selector
 
-`SandModal` includes an internal wallet selector with a MetaMask card. The Confirm button is enabled only when:
+`SandModal` includes a built-in wallet selector with a MetaMask card. The confirm button is only enabled when:
 
 - A wallet is selected and connected
-- Required args are valid (recipient, amount, orderId)
+- Required arguments are valid (recipient, amount, order ID)
 
 ## Permit vs Approve
 
 > Important
 >
-> The SAND token on Polygon currently does not implement EIP‑2612 permit. As a result, the SDK always uses the classic `approve` → `pay` flow. The permit fields in `PayArgs` are kept for forward compatibility and are ignored for SAND on Polygon.
+> The SAND token on Polygon currently does not implement the EIP-2612 permit standard. Therefore, the SDK always uses the classic `approve` → `pay` flow. The permit fields in `PayArgs` are kept for future compatibility and are ignored for SAND on Polygon.
 
 The SDK will:
 
-- Check SAND balance and throw a clear error if insufficient
-- Check allowance and, if needed, automatically send `approve(paymentContract, amount)` before calling `pay`
+1. Check SAND balance and throw a clear error if insufficient
+2. Check allowance and, if needed, automatically send `approve(paymentContract, amount)` before calling `pay`
 
 ### What are v, r, s?
 
-ECDSA signatures on secp256k1 (used by Ethereum) are composed of three parts:
+ECDSA signatures on secp256k1 (used by Ethereum) consist of three parts:
 
-- **r**: first 32-byte component (hex string). Related to an x‑coordinate derived during signing.
-- **s**: second 32-byte component (hex string). On Ethereum it must be in “low‑s” form.
-- **v**: recovery id (number) enabling public key recovery from `(r, s)` and the message. Common values are `27` or `28`. Some libraries return `0/1`; you can convert by adding `27`.
+- **r**: First 32-byte component (hex string). Related to an x-coordinate derived during signing.
+- **s**: Second 32-byte component (hex string). On Ethereum, it must be in "low-s" form.
+- **v**: Recovery id (number) enabling public key recovery from `(r, s)` and the message. Common values are `27` or `28`. Some libraries return `0` or `1`; you can convert by adding `27`.
 
-In EIP‑2612 (permit), you sign typed data (EIP‑712). Here is how to obtain and split a signature using ethers:
+In EIP-2612 (permit), you sign typed data (EIP-712). Here's how to obtain and split a signature using ethers:
 
 ```ts
 import { ethers } from 'ethers';
 
-// Example: sign EIP-712 permit typed data and extract v, r, s
+// Example: Sign EIP-712 typed data and extract v, r, s
 async function signPermitAndSplit(
   wallet: ethers.Wallet,
   domain: any,
@@ -152,41 +213,50 @@ async function signPermitAndSplit(
 ) {
   // 65-byte signature: r(32) + s(32) + v(1)
   const signature = await wallet._signTypedData(domain, types, value);
-  const { v, r, s } = ethers.utils.splitSignature(signature);
+  
+  // Split into v, r, s
+  const sig = ethers.utils.splitSignature(signature);
+  
+  // Convert v if needed (some libraries return 0/1 instead of 27/28)
+  let { v, r, s } = sig;
+  if (v === 0 || v === 1) {
+    v += 27;
+  }
+  
   return { v, r, s };
 }
 ```
 
 Practical notes:
 
-- **Types**: `r` and `s` are `0x` hex strings (32 bytes). `v` is a number (27/28 or 0/1 depending on the source; if 0/1, add 27).
-- **Validation**: The contract will revert if the signature is invalid (wrong domain/chainId, expired `deadline`, mismatched owner, etc.).
-- **Security**: Always sign the correct EIP‑712 domain (name, version, chainId, verifyingContract) to avoid replay on other networks/contracts.
+- **Types**: `r` and `s` are hex strings (32 bytes). `v` is a number (27/28 or 0/1 depending on the source; if 0/1, add 27).
+- **Validation**: The contract returns an error if the signature is invalid (incorrect domain/chainId, expired `deadline`, non-matching owner, etc.).
+- **Security**: Always sign the correct EIP-712 domain (name, version, chainId, verifying contract) to prevent replay attacks on other networks/contracts.
 
 ## Error Handling
 
-- Most functions throw standard `Error` instances with descriptive messages.
-- Common causes:
-  - Wrong network: expected configured `chainId`, got a different one
-  - Missing per-chain address: `PAYMENT_CONTRACT_ADDRESS_<chainId>` not provided (a default is included for 137)
-  - SAND token address missing (a default is included for 137)
+- Most functions return standard error instances with descriptive messages.
+- Common issues:
+  - Wrong network: The expected `chainId` differs from the configured one (default 137/Polygon via environment variables or `args.chainId`).
+  - Missing wallet address: `PAYMENT_CONTRACT_ADDRESS_<chainId>` not provided (a default is included for 137).
+  - Missing SAND token address (a default is included for 137).
 
-### Troubleshooting gas estimation reverts
+### Gas Estimation Reverts
 
-- Ensure the payer wallet is on Polygon (137)
-- Ensure `recipient` is a valid non-zero address and not equal to the payer (some contracts forbid self-payments)
-- Ensure `orderId` matches the contract’s business rules (e.g., registered, not consumed)
-- If not using permit, you’ll be prompted to approve first time; accept the approval tx
-- If using a custom SAND token address or different chain, verify decimals and addresses
+- Ensure the payer's wallet is on Polygon (137).
+- Ensure `recipient` is a valid non-zero address different from the payer (some contracts forbid self-payments).
+- Ensure `orderId` matches the contract's business rules (e.g., registered, not consumed).
+- If not using a permit, you'll be prompted to approve the first time; accept the approval transaction.
+- If using a custom SAND token address or a different chain, verify the decimals and addresses.
 
 ## TypeScript
 
-- Types are shipped with the package (`dist/index.d.ts`).
+- Types are included with the package (`dist/index.d.ts`).
 - Typical `tsconfig` settings: `strict`, `esModuleInterop`, `jsx: react-jsx`.
 
-## Local test web app
+## Local Test Web App
 
-Use `test-web/` for a minimal Vite + React setup using the SDK. To run:
+Use the `test-web/` directory for a minimal test environment with Vite and React using the SDK. To run:
 
 ```bash
 cd test-web
@@ -194,10 +264,10 @@ npm i
 npm run dev
 ```
 
-Example `.env` for Polygon (place in `test-web/.env`):
+Example `.env` file for Polygon (place in `test-web/.env`):
 
 ```env
-# Chain selection (defaults to 137)
+# Chain selection (default: 137)
 VITE_PAY_WITH_SAND_CHAIN_ID=137
 VITE_CHAIN_ID=137
 
@@ -205,14 +275,14 @@ VITE_CHAIN_ID=137
 VITE_PAYMENT_CONTRACT_ADDRESS_137=0xB15626D438168b4906c28716F0abEF3683287924
 VITE_SAND_TOKEN_ADDRESS_137=0xBbba073C31bF03b8ACf7c28EF0738DeCF3695683
 
-# Optional WalletConnect RPC
+# WalletConnect / RPC (optional)
 VITE_INFURA_ID=<your_infura_project_id>
 ```
 
 ## Versioning / NPM Tags
 
-- Stable releases are published under the `latest` tag (e.g., `0.2.0`).
-- Install stable:
+- Stable releases are published under the `latest` tag (e.g., `0.4.0`).
+- To install the latest stable version:
 
 ```bash
 npm i @pay-with-sand/sdk
