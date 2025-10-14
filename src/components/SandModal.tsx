@@ -5,6 +5,7 @@ import { payWithSand } from '../payWithSand';
 import { ethers } from 'ethers';
 import { injectSandModalStyles } from './sandModalStyles';
 import MetaMaskIcon from '../assets/MetaMask-icon-fox.svg';
+import RainbowIcon from '../assets/Rainbow-icon.svg';
 import SandLogo from '../assets/SandLogo.svg';
 // WalletConnect removed per product requirement
 
@@ -24,7 +25,7 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
   const [loading, setLoading] = React.useState(false);
   const [errMsg, setErrMsg] = React.useState<string | null>(null);
   const [internalSigner, setInternalSigner] = React.useState<ethers.Signer | null>(null);
-  const [selectedWallet, setSelectedWallet] = React.useState<'metamask' | null>(null);
+  const [selectedWallet, setSelectedWallet] = React.useState<'metamask' | 'rainbow' | null>(null);
 
   // Ensure this hook runs on all renders to keep order stable
   React.useEffect(() => { return () => { }; }, []);
@@ -45,6 +46,31 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
       const s = await provider.getSigner();
       setInternalSigner(s);
       setSelectedWallet('metamask');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErrMsg(msg);
+    }
+  };
+
+  const connectRainbow = async () => {
+    setErrMsg(null);
+    try {
+      const anyWindow = window as any;
+      const providers = Array.isArray(anyWindow.ethereum?.providers)
+        ? anyWindow.ethereum.providers
+        : [];
+      const rainbowProvider =
+        anyWindow.rainbow ||
+        providers.find((p: any) => p?.isRainbow) ||
+        (anyWindow.ethereum?.isRainbow ? anyWindow.ethereum : null);
+
+      if (!rainbowProvider) throw new Error('Rainbow wallet not found');
+
+      await rainbowProvider.request?.({ method: 'eth_requestAccounts' });
+      const provider = new ethers.providers.Web3Provider(rainbowProvider);
+      const s = await provider.getSigner();
+      setInternalSigner(s);
+      setSelectedWallet('rainbow');
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setErrMsg(msg);
@@ -127,6 +153,14 @@ export function SandModal({ isOpen, onClose, args, usdValue, onSuccess, signer }
               >
                 <img src={MetaMaskIcon} alt="MetaMask" width={20} height={20} />
                 MetaMask
+              </button>
+              <button
+                className={`sand-wallet-btn ${selectedWallet === 'rainbow' ? 'selected' : ''}`}
+                onClick={connectRainbow}
+                disabled={loading}
+              >
+                <img src={RainbowIcon} alt="Rainbow" width={20} height={20} />
+                Rainbow
               </button>
               {/* Disconnect button removed */}
             </div>
